@@ -10,7 +10,7 @@ namespace ReferenceApp
         {
             NoLogging(234, "This is a test", DateTime.Now);
 
-            Logging(234, "This is a test", DateTime.Now);
+            Logging(234, "This is a test", false, 234, 56456, 12312, 1, 2, DateTime.Now);
         }
 
         static void NoLogging(int intObject, string stringObject, DateTime dateTimeObject)
@@ -20,9 +20,19 @@ namespace ReferenceApp
             string c = a + b;
         }
 
-        static void Logging(int intObject, string stringObject, DateTime dateTimeObject)
+        static void Logging(int intObject, string stringObject, bool boolObject, float floatObject, long longObject, double doubleObject, short shortObject, uint uintObject,  DateTime dateTimeObject)
         {
-            File.AppendAllText("Logging -> " + "intObject=" + intObject.ToString() + "; stringObject=" + stringObject.ToString() + "; dateTimeObject=" + dateTimeObject.ToString() , @"c:\Temp\Does\Test.log");
+            File.AppendAllText("Logging -> " + "intObject=" + intObject.ToString()
+                + "; stringObject=" + stringObject.ToString()
+                + "; dateTimeObject=" + dateTimeObject.ToString()
+                + "; boolObject=" + boolObject.ToString()
+                + "; floatObject=" + floatObject.ToString()
+                + "; longObject=" + longObject.ToString()
+                + "; doubleObject=" + doubleObject.ToString()
+                + "; shortObject=" + shortObject.ToString()
+                + "; uintObject=" + uintObject.ToString()
+                , @"c:\Temp\Does\Test.log");
+            ;
             Stopwatch stopWatch = Stopwatch.StartNew();
 
             string a = "Something to do (" + intObject + ")";

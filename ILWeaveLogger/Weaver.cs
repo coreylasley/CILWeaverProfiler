@@ -36,7 +36,7 @@ namespace ILWeaveLogger
         /// <param name="executableFileName"></param>
         /// <param name="temporaryPath"></param>
         /// <returns>The executable's disassembled IL code</returns>
-        public string Disassemble(string executableFileName, string temporaryPath = @"C:\Temp\Does\")
+        public string Disassemble(string executableFileName, string temporaryPath = @"C:\Temp\")
         {
             string text = "";
             string toPath = temporaryPath + "temp.il";
@@ -74,7 +74,9 @@ namespace ILWeaveLogger
 
             int lineNumber = -1;
                         
-            string l, paramItem, label;
+            string l, label;
+
+            Parameter paramItem;
 
             List<Method> methods = new List<Method>();
             Method currentMethod = new Method();
@@ -83,6 +85,7 @@ namespace ILWeaveLogger
             StringBuilder template = new StringBuilder();
 
             bool includeLine = true;
+            bool alreadyGotParameterOnThisLine = false;
 
             // Split the IL code into a List of lines
             List<string> lines = IL.Split('\n').ToList();
@@ -90,6 +93,7 @@ namespace ILWeaveLogger
             // Loop through each line of IL code
             foreach (string line in lines)
             {
+                alreadyGotParameterOnThisLine = false;
                 includeLine = true;
                 lineNumber++;
 
@@ -116,32 +120,37 @@ namespace ILWeaveLogger
                             inMethodDef = true;
 
                             paramItem = GetParameter(l, nameEnd);
-                            if (paramItem != "")
+                            if (paramItem != null)
                             {
-                                currentMethod.Parameters.Add(paramItem);                                
-                                inMethodDef = false;
+                                currentMethod.Parameters.Add(paramItem);
+                                alreadyGotParameterOnThisLine = true;
+
+                                if (paramItem.IsLast)
+                                    inMethodDef = false;
                             }
                         }
                     }                    
                 } // is .method
 
                 // If we are inside a Method definition
-                if (inMethodDef)
+                if (inMethodDef && !alreadyGotParameterOnThisLine)
                 {
-                    paramItem = GetParameter(l, nameEnd);
-                    if (paramItem != "")
+                    paramItem = GetParameter(l);
+                    if (paramItem != null)
                     {
-                        currentMethod.Parameters.Add(paramItem.TrimEnd('*'));
+                        currentMethod.Parameters.Add(paramItem);
 
-                        if (paramItem.EndsWith('*'))
+                        if (paramItem.IsLast)
                            inMethodDef = false;
                     }
+                    /*
                     else
                     {
                         string[] paramParts = l.TrimEnd(',').Split(' ');
                         if (paramParts.Length > 1)
                             currentMethod.Parameters.Add(paramParts[paramParts.Length - 1]);
                     }
+                    */
                 }
 
                 if (l == "{" && inMethod)
@@ -288,21 +297,66 @@ namespace ILWeaveLogger
         /// <param name="parameters"></param>
         /// <param name="existingLabels"></param>
         /// <returns>IL code</returns>
-        private string GetParameterLoggingCodeBlock(string methodName, List<string> parameters, List<string> existingLabels)
+        private string GetParameterLoggingCodeBlock(string methodName, List<Parameter> parameters, List<string> existingLabels)
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldc.i4." + (parameters.Count * 2));
+            sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldc.i4.s");
             sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  newarr     [System.Runtime]System.String");
             sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  dup");
 
+            int y = 0;
             for (int x = 0; x < parameters.Count; x++)
             {
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldc.i4." + x);
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + parameters[x] + "=\"");
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldc.i4." + y);
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + parameters[x].Name + "=\"");
                 sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  dup");
+
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldc.i4." + y+1);
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldarga.s   " + parameters[x].Name);
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  call       " + ToCILType(parameters[x].Type));
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  stelem.ref");
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  dup");
+
+
+                y += 2;
             }
 
             return sb.ToString();
+        }
+
+        private string ToCILType(string type)
+        {
+            string ret = "[System.Runtime]System.";
+            switch(type.ToLower())
+            {
+                case "int32":
+                    ret += "Int32";
+                    break;
+                case "int16":
+                    ret += "Int16";
+                    break;
+                case "int64":
+                    ret += "Int64";
+                    break;
+                case "float32":
+                    ret += "Single";
+                    break;
+                case "string":
+                    ret += "Object";
+                    break;
+                case "bool":
+                    ret += "Boolean";
+                    break;
+                case "float64":
+                    ret += "Double";
+                    break;
+                default:
+                    if (type.StartsWith("valuetype "))
+                        ret = ret.Replace("valuetype ", "");
+                    break;
+            }
+
+            return ret;
         }
 
         /// <summary>
@@ -354,29 +408,42 @@ namespace ILWeaveLogger
         /// <param name="l"></param>
         /// <param name="nameEnd"></param>
         /// <returns>the type of the method parameter</returns>
-        private string GetParameter(string l, int nameEnd)
+        private Parameter GetParameter(string l, int nameEnd = -1)
         {
-            string ret = "";
+            Parameter ret = new Parameter();
             if (l.IndexOf("cil managed") < 0)
             {
-                string[] paramParts = l.Substring(nameEnd + 1, l.Length - (nameEnd + 1) - 1).Split(' ');
+                string[] paramParts = l.Substring(nameEnd + 1, l.Length - (nameEnd + 1) - 1).Trim().Split(' ');
                 // Append an * to the string so we can identify it as the last parameter
-                ret = paramParts[paramParts.Length - 1] + "*";                
+                
+                ret.Name = paramParts[paramParts.Length - 1] + "*";
+                for (int x = 0; x < paramParts.Length - 1; x++)
+                {
+                    if (ret.Type != "") ret.Type += " ";
+                    ret.Type += paramParts[x].Trim().Replace("(","");
+                }
             }
             else
             {
                 int methodDefEnd = l.IndexOf(")");
                 if (methodDefEnd > nameEnd)
                 {
+                    if (nameEnd < 0) nameEnd = 0;
                     string[] paramParts = l.Substring(nameEnd, methodDefEnd - nameEnd).Split(' ');
                     if (paramParts.Length > 1)
                     {
-                        ret = paramParts[paramParts.Length - 1];
+                        ret.IsLast = true;
+                        ret.Name = paramParts[paramParts.Length - 1];
+                        for (int x = 0; x < paramParts.Length - 1; x++)
+                        {
+                            if (ret.Type != "") ret.Type += " ";
+                            ret.Type += paramParts[x].Trim().Replace("(", "");
+                        }
                     }
                 }
             }
 
-            return ret;
+            return ret.Name != "" ? ret : null;
         }
 
 
@@ -387,10 +454,17 @@ namespace ILWeaveLogger
     {
         public string MethodName { get; set; } = "";
         
-        public List<string> Parameters { get; set; } = new List<string>();
+        public List<Parameter> Parameters { get; set; } = new List<Parameter>();
         public List<string> Labels { get; set; } = new List<string>();
         public List<string> Gotos { get; set; } = new List<string>();
         public List<string> InitTypes { get; set; } = new List<string>();
+    }
+
+    public class Parameter
+    {
+        public string Type { get; set; } = "";
+        public string Name { get; set; } = "";
+        public bool IsLast { get; set; }
     }
 
 }
