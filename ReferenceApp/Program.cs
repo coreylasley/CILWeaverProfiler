@@ -10,7 +10,7 @@ namespace ReferenceApp
         {
             NoLogging(234, "This is a test", DateTime.Now);
 
-            Logging(234, "This is a test", false, 234, 56456, 12312, 1, 2, DateTime.Now);
+            //Logging(234, "This is a test", false, 234, 56456, 12312, 1, 2, DateTime.Now);
         }
 
         static void NoLogging(int intObject, string stringObject, DateTime dateTimeObject)
@@ -19,6 +19,8 @@ namespace ReferenceApp
             string b = " to see if this works " + stringObject;
             string c = a + b;
         }
+
+        /*
 
         static void Logging(int intObject, string stringObject, bool boolObject, float floatObject, long longObject, double doubleObject, short shortObject, uint uintObject,  DateTime dateTimeObject)
         {
@@ -43,5 +45,6 @@ namespace ReferenceApp
 
             File.AppendAllText("Logging -> " + stopWatch.ElapsedMilliseconds, @"c:\Temp\Does\Test.log");
         }
+        */
     }
 }

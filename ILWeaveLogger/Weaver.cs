@@ -9,7 +9,7 @@ namespace ILWeaveLogger
 {
     public class Weaver
     {
-        public string ilasmPath { get; set; } = @"C:\Program Files (x86)\Microsoft SDKs\Windows\"; // "v10.0A\bin\NETFX 4.8 Tools\";
+        public string ilasmPaths { get; set; } = @"C:\Program Files (x86)\Microsoft SDKs\Windows\;C:\Windows\Microsoft.NET\Framework\v4.0.30319\"; // "v10.0A\bin\NETFX 4.8 Tools\";
 
         /// <summary>
         /// Assembles IL code into an executable
@@ -17,14 +17,41 @@ namespace ILWeaveLogger
         /// <param name="IL"></param>
         /// <param name="newExecutableFileName"></param>
         /// <returns>bool representing assembly success</returns>
-        public bool Assemble(string IL, string newExecutableFileName)
+        public bool Assemble(string IL, string newExecutableFileName, string temporaryPath = @"C:\Temp\")
         {
             bool ret = true;
 
-            string[] lines = IL.Split('\n');
-            foreach (string line in lines)
-            {
+            IL = IL.Replace("***", "//");
 
+            if (File.Exists(newExecutableFileName))
+            {               
+                File.Delete(newExecutableFileName);
+            }
+
+            string toPath = temporaryPath + "temp.il";
+
+            File.WriteAllText(toPath, IL);
+                       
+            string ilasm = GetLatestILExe(ilasmPaths, "ilasm.exe");
+            string workingPath = Path.GetDirectoryName(ilasm);
+            ProcessStartInfo procStartInfo = new ProcessStartInfo(ilasm, toPath + " /dll");
+            procStartInfo.WorkingDirectory = workingPath;
+            //procStartInfo.CreateNoWindow = false;
+
+            Process process = new Process();
+            process.StartInfo = procStartInfo;
+
+            process.Start();
+            process.WaitForExit();
+
+            if (File.Exists(toPath))
+            {                
+                File.Delete(toPath);
+            }
+
+            if (!File.Exists(newExecutableFileName))
+            {
+                ret = false;
             }
 
             return ret;
@@ -40,7 +67,7 @@ namespace ILWeaveLogger
         {
             string text = "";
             string toPath = temporaryPath + "temp.il";
-            ProcessStartInfo procStartInfo = new ProcessStartInfo(GetLatestILExe(ilasmPath, "ildasm.exe"), executableFileName + " /output:" + toPath);
+            ProcessStartInfo procStartInfo = new ProcessStartInfo(GetLatestILExe(ilasmPaths, "ildasm.exe"), executableFileName + " /output:" + toPath);
             procStartInfo.CreateNoWindow = false;
 
             Process process = new Process();
@@ -143,14 +170,6 @@ namespace ILWeaveLogger
                         if (paramItem.IsLast)
                            inMethodDef = false;
                     }
-                    /*
-                    else
-                    {
-                        string[] paramParts = l.TrimEnd(',').Split(' ');
-                        if (paramParts.Length > 1)
-                            currentMethod.Parameters.Add(paramParts[paramParts.Length - 1]);
-                    }
-                    */
                 }
 
                 if (l == "{" && inMethod)
@@ -164,7 +183,7 @@ namespace ILWeaveLogger
                     inMethodBody = false;                    
                 }
                 
-                // If we are inside the body of the method
+                // If we are inside the body of the method...
                 if (inMethodBody)
                 {
                     if (l.Contains(".locals init"))
@@ -203,6 +222,8 @@ namespace ILWeaveLogger
 
                         // Finally, insert the placeholder for the method start logging
                         template.AppendLine("***" + currentMethod.MethodName + "_START***");
+
+                        // Since we already inserted the line from the IL above, we dont want to add it again at the end of the loop
                         includeLine = false;
                     }
 
@@ -262,27 +283,39 @@ namespace ILWeaveLogger
         /// <param name="rootPath"></param>
         /// <param name="exeToFind"></param>
         /// <returns></returns>
-        private string GetLatestILExe(string rootPath, string exeToFind)
+        private string GetLatestILExe(string rootPaths, string exeToFind)
         {
             string latestPath = "";
 
-            if (File.Exists(rootPath + exeToFind))
+            string[] paths = rootPaths.Split(';');
+
+            if (File.Exists(paths[0] + exeToFind))
             {
-                latestPath = rootPath + exeToFind;
+                latestPath = paths[0] + exeToFind;
             }
             else
             {
-                string[] files = Directory.GetFiles(rootPath, exeToFind, SearchOption.AllDirectories);
-
                 DateTime latestDate = DateTime.MinValue;
 
-                foreach (string file in files)
+                foreach (string p in paths)
                 {
-                    FileInfo fi = new FileInfo(file);
-                    if (fi.CreationTime > latestDate)
+                    try
                     {
-                        latestDate = fi.CreationTime;
-                        latestPath = file;
+                        string[] files = Directory.GetFiles(p, exeToFind, SearchOption.AllDirectories);
+
+                        foreach (string file in files)
+                        {
+                            FileInfo fi = new FileInfo(file);
+                            if (fi.CreationTime > latestDate)
+                            {
+                                latestDate = fi.CreationTime;
+                                latestPath = file;
+                            }
+                        }
+                    }
+                    catch(Exception ex)
+                    {
+                        Debug.WriteLine("ERROR: " + ex);
                     }
                 }
             }
@@ -300,23 +333,22 @@ namespace ILWeaveLogger
         private string GetParameterLoggingCodeBlock(string methodName, List<Parameter> parameters, List<string> existingLabels)
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldc.i4.s");
-            sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  newarr     [System.Runtime]System.String");
-            sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  dup");
+            sb.AppendLine(GetUniqueLabel(ref existingLabels) + "ldc.i4.s " + parameters.Count * 2);
+            sb.AppendLine(GetUniqueLabel(ref existingLabels) + "newarr     [System.Runtime]System.String");
+            sb.AppendLine(GetUniqueLabel(ref existingLabels) + "dup\n");
 
             int y = 0;
             for (int x = 0; x < parameters.Count; x++)
             {
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldc.i4." + y);
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + parameters[x].Name + "=\"");
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  dup");
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "ldc.i4." + y);
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + parameters[x].Name + "=\"");
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "dup");
 
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldc.i4." + y+1);
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  ldarga.s   " + parameters[x].Name);
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  call       " + ToCILType(parameters[x].Type));
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  stelem.ref");
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + ":  dup");
-
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "ldc.i4." + (y+1));
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "ldarga.s   " + parameters[x].Name);
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "call       instance string " + ToCILType(parameters[x].Type) + "::ToString()");
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "stelem.ref");
+                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "dup\n");
 
                 y += 2;
             }
@@ -324,36 +356,87 @@ namespace ILWeaveLogger
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Converts a type keyword to a .NET Type name if not already a .NET Type name
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
         private string ToCILType(string type)
         {
-            string ret = "[System.Runtime]System.";
-            switch(type.ToLower())
+            string ret = type;
+
+            if (!type.Contains("[System.Runtime]"))
             {
-                case "int32":
-                    ret += "Int32";
-                    break;
-                case "int16":
-                    ret += "Int16";
-                    break;
-                case "int64":
-                    ret += "Int64";
-                    break;
-                case "float32":
-                    ret += "Single";
-                    break;
-                case "string":
-                    ret += "Object";
-                    break;
-                case "bool":
-                    ret += "Boolean";
-                    break;
-                case "float64":
-                    ret += "Double";
-                    break;
-                default:
-                    if (type.StartsWith("valuetype "))
-                        ret = ret.Replace("valuetype ", "");
-                    break;
+                ret = "[System.Runtime]System.";
+                switch (type.ToLower())
+                {
+                    case "int32":
+                        ret += "Int32";
+                        break;
+                    case "int16":
+                        ret += "Int16";
+                        break;
+                    case "int64":
+                        ret += "Int64";
+                        break;
+                    case "uint32":
+                        ret += "UInt32";
+                        break;
+                    case "uint16":
+                        ret += "UInt16";
+                        break;
+                    case "uint64":
+                        ret += "UInt64";
+                        break;
+                    case "long":
+                        ret += "Int64";
+                        break;
+                    case "ulong":
+                        ret += "UInt64";
+                        break;
+                    case "short":
+                        ret += "Int16";
+                        break;
+                    case "ushort":
+                        ret += "UInt16";
+                        break;
+                    case "decimal":
+                        ret += "Decimal";
+                        break;
+                    case "string":
+                        ret += "Object";
+                        break;
+                    case "bool":
+                        ret += "Boolean";
+                        break;
+                    case "float64":
+                        ret += "Double";
+                        break;
+                    case "double":
+                        ret += "Double";
+                        break;
+                    case "float32":
+                        ret += "Single";
+                        break;
+                    case "object":
+                        ret += "Object";
+                        break;
+                    case "byte":
+                        ret += "Byte";
+                        break;
+                    case "sbyte":
+                        ret += "SByte";
+                        break;
+                    case "char":
+                        ret += "Char";
+                        break;
+                    default:
+                        if (type.StartsWith("valuetype "))
+                            ret = ret.Replace("valuetype ", "");
+                        else
+                            ret += "Object";
+                        break;
+                }
             }
 
             return ret;
@@ -368,11 +451,11 @@ namespace ILWeaveLogger
         {
             string ret = ".locals init (";
 
-            ret += "class [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_0" + (initTypes.Count > 0 ? "," : ")") + "\n";
+            ret += "string V_0,\nclass [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_1" + (initTypes.Count > 0 ? "," : ")") + "\n";
 
             for (int x=0;x<initTypes.Count; x++)
             {
-                ret += initTypes[x] + "V_" + x + (x < initTypes.Count - 1 ? "," : ")") + "\n";
+                ret += initTypes[x] + " V_" + (x+2) + (x < initTypes.Count - 1 ? "," : ")") + "\n";
             }
 
             return ret;
@@ -383,7 +466,7 @@ namespace ILWeaveLogger
         /// </summary>
         /// <param name="existingLabels"></param>
         /// <returns></returns>
-        private string GetUniqueLabel(ref List<string> existingLabels)
+        private string GetUniqueLabel(ref List<string> existingLabels, bool includeColonAndPadding = true)
         {
             bool gotIt = false;
             string ret = "";
@@ -399,7 +482,7 @@ namespace ILWeaveLogger
             }
             existingLabels.Add(ret);
 
-            return "    " + ret;
+            return (includeColonAndPadding ? "    " : "") + ret + (includeColonAndPadding ? ":  " : "");
         }
 
         /// <summary>
@@ -411,12 +494,13 @@ namespace ILWeaveLogger
         private Parameter GetParameter(string l, int nameEnd = -1)
         {
             Parameter ret = new Parameter();
+
+            // If we are NOT looking at the last parameter
             if (l.IndexOf("cil managed") < 0)
             {
                 string[] paramParts = l.Substring(nameEnd + 1, l.Length - (nameEnd + 1) - 1).Trim().Split(' ');
-                // Append an * to the string so we can identify it as the last parameter
-                
-                ret.Name = paramParts[paramParts.Length - 1] + "*";
+                               
+                ret.Name = paramParts[paramParts.Length - 1];
                 for (int x = 0; x < paramParts.Length - 1; x++)
                 {
                     if (ret.Type != "") ret.Type += " ";

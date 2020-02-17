@@ -20,7 +20,12 @@ namespace ILWeaveLogger
             string IL = w.Disassemble(@"C:\git\PoorMansLogger.ILWeaver\ReferenceApp\bin\Debug\netcoreapp3.1\ReferenceApp.dll");
 
             Console.WriteLine(IL);
-            Console.WriteLine(w.ModifyILForLogging(IL));
+
+            string modified = w.ModifyILForLogging(IL);
+
+            Console.WriteLine(modified);
+
+            w.Assemble(modified, @"c:\Temp\NewReferenceApp.dll");
         }
     }
 }
