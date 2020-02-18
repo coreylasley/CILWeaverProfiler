@@ -90,12 +90,14 @@ namespace ILWeaveLogger
         /// </summary>
         /// <param name="IL">Disassembled IL code</param>
         /// <returns>Modified IL code with logging functionality</returns>
-        public string ModifyILForLogging(string IL)
-        {            
+        public List<Class> UnpackILCode(string IL)
+        {
+            bool inClass = false;
             bool inMethodDef = false;
             bool inMethod = false;
             bool inMethodBody = false;
             bool inInit = false;
+            int methodCount = 0;
 
             int nameEnd = 0;
 
@@ -105,9 +107,12 @@ namespace ILWeaveLogger
 
             Parameter paramItem;
 
-            List<Method> methods = new List<Method>();
-            Method currentMethod = new Method();
-            int methodCount = 0;
+            List<Class> classes = new List<Class>();
+            Class currentClass = new Class();
+            int classCount = 0;
+
+            //List<Method> methods = new List<Method>();
+            Method currentMethod = new Method();            
 
             StringBuilder template = new StringBuilder();
 
@@ -125,33 +130,48 @@ namespace ILWeaveLogger
                 lineNumber++;
 
                 l = line.Trim();
-             
-                // Did we hit the first line of a Method definition?
-                if (l.StartsWith(".method "))
-                {
-                    // Add the last method to the list if there was one
-                    if (methodCount > 0) methods.Add(currentMethod);
 
-                    methodCount++;
-                    currentMethod = new Method();
+                // Did we hit the first line of a Class definition?
+                if (!inClass && l.StartsWith(".class"))
+                {                    
+                    currentClass.ClassName = ExtractClassName(l);
+
+                    inClass = true;
+                }
+
+                // Did we hit the first line of a Method definition?
+                if (inClass && l.StartsWith(".method ") && !l.Contains("specialname rtspecialname"))
+                {                   
                     
+                    // Find the end of the method's name
                     nameEnd = l.IndexOf("(");
                     if (nameEnd > 0)
                     {
+                        // The start of the method name always seems to have 2 spaces in front of it
                         int nameStart = l.IndexOf("  ");
                         if (nameStart > 0 && nameStart < nameEnd)
                         {
+                            // Extract the method name from the line
                             currentMethod.MethodName = l.Substring(nameStart + 2, nameEnd - (nameStart + 2));
 
+                            // Add a placeholder for this method in the class lines of code
+                            currentClass.LinesOfCode.Add("%%%" + currentMethod.MethodName + "%%%");
+
+                            // We are now in the method and inside of it's definition
                             inMethod = true;
                             inMethodDef = true;
 
-                            paramItem = GetParameter(l, nameEnd);
+                            // The first parameter (if one exists) will be on this line as well
+                            paramItem = ExtractParameter(l, nameEnd);
                             if (paramItem != null)
                             {
+                                // Add it if we got one
                                 currentMethod.Parameters.Add(paramItem);
+
+                                // We dont want to check for a parameter on this line again (next section)
                                 alreadyGotParameterOnThisLine = true;
 
+                                // If the parameter we obtained had the characteristics of the last parameter in the definition
                                 if (paramItem.IsLast)
                                     inMethodDef = false;
                             }
@@ -162,7 +182,8 @@ namespace ILWeaveLogger
                 // If we are inside a Method definition
                 if (inMethodDef && !alreadyGotParameterOnThisLine)
                 {
-                    paramItem = GetParameter(l);
+                    // Extract the parameter from the line, if one exists
+                    paramItem = ExtractParameter(l);
                     if (paramItem != null)
                     {
                         currentMethod.Parameters.Add(paramItem);
@@ -172,6 +193,7 @@ namespace ILWeaveLogger
                     }
                 }
 
+                // If we are inside of a method and have hit the {, we are now in the method body
                 if (l == "{" && inMethod)
                 {
                     inMethodBody = true;   
@@ -179,8 +201,17 @@ namespace ILWeaveLogger
 
                 if (l.Contains("// end of method"))
                 {
+                    currentMethod.LinesOfCode.Add(l);
+
+                    // Add the current method to the list of methods in the current class
+                    currentClass.Methods.Add(currentMethod);
+
+                    methodCount++;
+                    currentMethod = new Method();
+
                     inMethod = false;
-                    inMethodBody = false;                    
+                    inMethodBody = false;
+                    includeLine = false;
                 }
                 
                 // If we are inside the body of the method...
@@ -190,7 +221,8 @@ namespace ILWeaveLogger
                     {
                         inInit = true;
                         includeLine = false;
-                        template.AppendLine("    ***" + currentMethod.MethodName + "_LOCALS INIT***");
+                        currentMethod.LinesOfCode.Add("    ***" + currentMethod.MethodName + "_LOCALS INIT***");
+                        //template.AppendLine("    ***" + currentMethod.MethodName + "_LOCALS INIT***");
                     }
 
                     if (inInit && l.Contains("V_"))
@@ -215,13 +247,18 @@ namespace ILWeaveLogger
                     {
                         // If an ".locals init" section was not found before this, lets insert a placeholder for it
                         if (currentMethod.InitTypes.Count == 0)
-                            template.AppendLine("***" + currentMethod.MethodName + "_LOCALS INIT***");
+                        {
+                            currentMethod.LinesOfCode.Add("***" + currentMethod.MethodName + "_LOCALS INIT***");
+                            //template.AppendLine("***" + currentMethod.MethodName + "_LOCALS INIT***");
+                        }
 
                         // Insert this line
-                        template.AppendLine("    IL_0000:  nop");
+                        currentMethod.LinesOfCode.Add("    IL_0000:  nop");
+                        //template.AppendLine("    IL_0000:  nop");
 
                         // Finally, insert the placeholder for the method start logging
-                        template.AppendLine("***" + currentMethod.MethodName + "_START***");
+                        currentMethod.LinesOfCode.Add("***" + currentMethod.MethodName + "_START***");
+                        //template.AppendLine("***" + currentMethod.MethodName + "_START***");
 
                         // Since we already inserted the line from the IL above, we dont want to add it again at the end of the loop
                         includeLine = false;
@@ -239,7 +276,8 @@ namespace ILWeaveLogger
                         // Is this line where the method returns?
                         if (l == label + ":  ret")
                         {
-                            template.AppendLine("***" + currentMethod.MethodName + "_END***");
+                            currentMethod.LinesOfCode.Add("***" + currentMethod.MethodName + "_END***");
+                            //template.AppendLine("***" + currentMethod.MethodName + "_END***");
                         }
                     }
                     else if (l.Contains("IL_")) // If it doesnt start with a label, but contains one, we have found a GOTO
@@ -251,31 +289,52 @@ namespace ILWeaveLogger
                     }                    
                 }
 
+                if (!inMethod && inClass)
+                {
+                    if (l.Contains("// end of class"))
+                    {
+                        currentClass.LinesOfCode.Add(l);
+
+                        // Add the current class to our class list
+                        classes.Add(currentClass);
+                        classCount++;
+
+                        currentClass = new Class();
+
+                        inClass = false;
+                        includeLine = false;
+                    }
+                }
+
                 // Append the line to our running template (essentially the IL, with our placeholders)
                 if (includeLine)
+                {
+                    if (inMethod)
+                        currentMethod.LinesOfCode.Add(line);
+                    else if (inClass)
+                        currentClass.LinesOfCode.Add(line);
+
                     template.AppendLine(line);
+                }
             }
 
-            return ReplacePlaceholders(template.ToString(), methods);
+            //return ReplacePlaceholders(template.ToString(), methods);
+
+            return classes;
         }
 
-
-        /// <summary>
-        /// Replaces the placeholder strings in the IL code with applicable IL code blocks
-        /// </summary>
-        /// <param name="IL"></param>
-        /// <param name="methods"></param>
-        /// <returns>IL Code</returns>
-        private string ReplacePlaceholders(string IL, List<Method> methods)
+        private string ExtractClassName(string line)
         {
-            foreach(Method m in methods)
-            {
-                IL = IL.Replace("***" + m.MethodName + "_LOCALS INIT***", GetLocalInit(m.InitTypes));
-                IL = IL.Replace("***" + m.MethodName + "_START***", GetParameterLoggingCodeBlock(m.MethodName, m.Parameters, m.Labels));
-            }
+            string ret = "";
 
-            return IL;
+            string[] parts = line.Split('.');
+            ret = parts[parts.Length - 1];
+
+            return ret;
         }
+
+
+
 
         /// <summary>
         /// Locates the latest version of an executable in all sub-directories of a root path if the executable is not found in the path specified
@@ -323,167 +382,7 @@ namespace ILWeaveLogger
             return latestPath;
         }
 
-        /// <summary>
-        /// Generates the Parameter Logging IL code block
-        /// </summary>
-        /// <param name="methodName"></param>
-        /// <param name="parameters"></param>
-        /// <param name="existingLabels"></param>
-        /// <returns>IL code</returns>
-        private string GetParameterLoggingCodeBlock(string methodName, List<Parameter> parameters, List<string> existingLabels)
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine(GetUniqueLabel(ref existingLabels) + "ldc.i4.s " + parameters.Count * 2);
-            sb.AppendLine(GetUniqueLabel(ref existingLabels) + "newarr     [System.Runtime]System.String");
-            sb.AppendLine(GetUniqueLabel(ref existingLabels) + "dup\n");
-
-            int y = 0;
-            for (int x = 0; x < parameters.Count; x++)
-            {
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "ldc.i4." + y);
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + parameters[x].Name + "=\"");
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "dup");
-
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "ldc.i4." + (y+1));
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "ldarga.s   " + parameters[x].Name);
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "call       instance string " + ToCILType(parameters[x].Type) + "::ToString()");
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "stelem.ref");
-                sb.AppendLine(GetUniqueLabel(ref existingLabels) + "dup\n");
-
-                y += 2;
-            }
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Converts a type keyword to a .NET Type name if not already a .NET Type name
-        /// </summary>
-        /// <param name="type"></param>
-        /// <returns></returns>
-        private string ToCILType(string type)
-        {
-            string ret = type;
-
-            if (!type.Contains("[System.Runtime]"))
-            {
-                ret = "[System.Runtime]System.";
-                switch (type.ToLower())
-                {
-                    case "int32":
-                        ret += "Int32";
-                        break;
-                    case "int16":
-                        ret += "Int16";
-                        break;
-                    case "int64":
-                        ret += "Int64";
-                        break;
-                    case "uint32":
-                        ret += "UInt32";
-                        break;
-                    case "uint16":
-                        ret += "UInt16";
-                        break;
-                    case "uint64":
-                        ret += "UInt64";
-                        break;
-                    case "long":
-                        ret += "Int64";
-                        break;
-                    case "ulong":
-                        ret += "UInt64";
-                        break;
-                    case "short":
-                        ret += "Int16";
-                        break;
-                    case "ushort":
-                        ret += "UInt16";
-                        break;
-                    case "decimal":
-                        ret += "Decimal";
-                        break;
-                    case "string":
-                        ret += "Object";
-                        break;
-                    case "bool":
-                        ret += "Boolean";
-                        break;
-                    case "float64":
-                        ret += "Double";
-                        break;
-                    case "double":
-                        ret += "Double";
-                        break;
-                    case "float32":
-                        ret += "Single";
-                        break;
-                    case "object":
-                        ret += "Object";
-                        break;
-                    case "byte":
-                        ret += "Byte";
-                        break;
-                    case "sbyte":
-                        ret += "SByte";
-                        break;
-                    case "char":
-                        ret += "Char";
-                        break;
-                    default:
-                        if (type.StartsWith("valuetype "))
-                            ret = ret.Replace("valuetype ", "");
-                        else
-                            ret += "Object";
-                        break;
-                }
-            }
-
-            return ret;
-        }
-
-        /// <summary>
-        /// Rebuilds the ".locals init" section of a method with the addition of a StopWatch
-        /// </summary>
-        /// <param name="initTypes"></param>
-        /// <returns>IL code</returns>
-        private string GetLocalInit(List<string> initTypes)
-        {
-            string ret = ".locals init (";
-
-            ret += "string V_0,\nclass [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_1" + (initTypes.Count > 0 ? "," : ")") + "\n";
-
-            for (int x=0;x<initTypes.Count; x++)
-            {
-                ret += initTypes[x] + " V_" + (x+2) + (x < initTypes.Count - 1 ? "," : ")") + "\n";
-            }
-
-            return ret;
-        }
-
-        /// <summary>
-        /// Generate a new Label value that is unique to the existing list (and adds the new value to the list)
-        /// </summary>
-        /// <param name="existingLabels"></param>
-        /// <returns></returns>
-        private string GetUniqueLabel(ref List<string> existingLabels, bool includeColonAndPadding = true)
-        {
-            bool gotIt = false;
-            string ret = "";
-            int v = 0;
-
-            while(!gotIt)
-            {
-                v++;
-                ret = "IL_" + v.ToString().PadLeft(4, '0');
-
-                if (existingLabels.Where(x => x == ret).FirstOrDefault() == null)
-                    gotIt = true;
-            }
-            existingLabels.Add(ret);
-
-            return (includeColonAndPadding ? "    " : "") + ret + (includeColonAndPadding ? ":  " : "");
-        }
+       
 
         /// <summary>
         /// Extracts a method parameter type from a line of IL code
@@ -491,7 +390,7 @@ namespace ILWeaveLogger
         /// <param name="l"></param>
         /// <param name="nameEnd"></param>
         /// <returns>the type of the method parameter</returns>
-        private Parameter GetParameter(string l, int nameEnd = -1)
+        private Parameter ExtractParameter(string l, int nameEnd = -1)
         {
             Parameter ret = new Parameter();
 
@@ -530,25 +429,6 @@ namespace ILWeaveLogger
             return ret.Name != "" ? ret : null;
         }
 
-
-
-    }
-
-    public class Method
-    {
-        public string MethodName { get; set; } = "";
-        
-        public List<Parameter> Parameters { get; set; } = new List<Parameter>();
-        public List<string> Labels { get; set; } = new List<string>();
-        public List<string> Gotos { get; set; } = new List<string>();
-        public List<string> InitTypes { get; set; } = new List<string>();
-    }
-
-    public class Parameter
-    {
-        public string Type { get; set; } = "";
-        public string Name { get; set; } = "";
-        public bool IsLast { get; set; }
     }
 
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace ILWeaveLogger
 {
@@ -21,11 +22,11 @@ namespace ILWeaveLogger
 
             Console.WriteLine(IL);
 
-            string modified = w.ModifyILForLogging(IL);
+            List<Class> modified = w.UnpackILCode(IL);
 
-            Console.WriteLine(modified);
+            //Console.WriteLine(modified);
 
-            w.Assemble(modified, @"c:\Temp\NewReferenceApp.dll");
+            //w.Assemble(modified, @"c:\Temp\NewReferenceApp.dll");
         }
     }
 }
