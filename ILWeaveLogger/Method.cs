@@ -14,19 +14,33 @@ namespace ILWeaveLogger
         public List<string> InitTypes { get; set; } = new List<string>();
         public List<string> LinesOfCode { get; set; } = new List<string>();
 
+
+        /// <summary>
+        /// Returns the IL Method that has been modified for profiling
+        /// </summary>
+        /// <returns></returns>
+        public string GenerateMethodILCode()
+        {
+            StringBuilder IL = new StringBuilder();
+            foreach(string line in LinesOfCode)
+            {
+                IL.AppendLine(line);
+            }
+
+            return ReplacePlaceholders(IL.ToString());
+        }
+
         /// <summary>
         /// Replaces the placeholder strings in the IL code with applicable IL code blocks
         /// </summary>
         /// <param name="IL"></param>
         /// <param name="methods"></param>
         /// <returns>IL Code</returns>
-        private string ReplacePlaceholders(string IL, List<Method> methods)
+        private string ReplacePlaceholders(string IL)
         {
-            foreach (Method m in methods)
-            {
-                IL = IL.Replace("***" + m.MethodName + "_LOCALS INIT***", GenerateBlock_LocalInit(m.InitTypes));
-                IL = IL.Replace("***" + m.MethodName + "_START***", GenerateBlock_ParameterLogging(m.MethodName, m.Parameters, m.Labels));
-            }
+            IL = IL.Replace("***" + MethodName + "_LOCALS INIT***", GenerateBlock_LocalInit());
+            IL = IL.Replace("***" + MethodName + "_START***", GenerateBlock_ParameterLogging());
+            IL = IL.Replace("***" + MethodName + "_END***", GenerateBlock_ExecutionLogging());
 
             return IL;
         }
@@ -38,25 +52,25 @@ namespace ILWeaveLogger
         /// <param name="parameters"></param>
         /// <param name="existingLabels"></param>
         /// <returns>IL code</returns>
-        private string GenerateBlock_ParameterLogging(string methodName, List<Parameter> parameters, List<string> existingLabels)
+        private string GenerateBlock_ParameterLogging()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "ldc.i4.s " + parameters.Count * 2);
-            sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "newarr     [System.Runtime]System.String");
-            sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "dup\n");
+            sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.s " + Parameters.Count * 2);
+            sb.AppendLine(GenerateUniqueLabel() + "newarr     [System.Runtime]System.String");
+            sb.AppendLine(GenerateUniqueLabel() + "dup\n");
 
             int y = 0;
-            for (int x = 0; x < parameters.Count; x++)
+            for (int x = 0; x < Parameters.Count; x++)
             {
-                sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "ldc.i4." + y);
-                sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + parameters[x].Name + "=\"");
-                sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "dup");
+                sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + y);
+                sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + Parameters[x].Name + "=\"");
+                sb.AppendLine(GenerateUniqueLabel() + "dup");
 
-                sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "ldc.i4." + (y + 1));
-                sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "ldarga.s   " + parameters[x].Name);
-                sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "call       instance string " + ToCILType(parameters[x].Type) + "::ToString()");
-                sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "stelem.ref");
-                sb.AppendLine(GenerateUniqueLabel(ref existingLabels) + "dup\n");
+                sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
+                sb.AppendLine(GenerateUniqueLabel() + "ldarga.s   " + Parameters[x].Name);
+                sb.AppendLine(GenerateUniqueLabel() + "call       instance string " + ToCILType(Parameters[x].Type) + "::ToString()");
+                sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
+                sb.AppendLine(GenerateUniqueLabel() + "dup\n");
 
                 y += 2;
             }
@@ -150,20 +164,25 @@ namespace ILWeaveLogger
             return ret;
         }
 
+        private string GenerateBlock_ExecutionLogging()
+        {
+            return "";
+        }
+
         /// <summary>
         /// Rebuilds the ".locals init" section of a method with the addition of a StopWatch
         /// </summary>
         /// <param name="initTypes"></param>
         /// <returns>IL code</returns>
-        private string GenerateBlock_LocalInit(List<string> initTypes)
+        private string GenerateBlock_LocalInit()
         {
             string ret = ".locals init (";
 
-            ret += "string V_0,\nclass [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_1" + (initTypes.Count > 0 ? "," : ")") + "\n";
+            ret += "string V_0,\nclass [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_1" + (InitTypes.Count > 0 ? "," : ")") + "\n";
 
-            for (int x = 0; x < initTypes.Count; x++)
+            for (int x = 0; x < InitTypes.Count; x++)
             {
-                ret += initTypes[x] + " V_" + (x + 2) + (x < initTypes.Count - 1 ? "," : ")") + "\n";
+                ret += InitTypes[x] + " V_" + (x + 2) + (x < InitTypes.Count - 1 ? "," : ")") + "\n";
             }
 
             return ret;
@@ -174,7 +193,7 @@ namespace ILWeaveLogger
         /// </summary>
         /// <param name="existingLabels"></param>
         /// <returns></returns>
-        private string GenerateUniqueLabel(ref List<string> existingLabels, bool includeColonAndPadding = true)
+        private string GenerateUniqueLabel(bool includeColonAndPadding = true)
         {
             bool gotIt = false;
             string ret = "";
@@ -185,10 +204,10 @@ namespace ILWeaveLogger
                 v++;
                 ret = "IL_" + v.ToString().PadLeft(4, '0');
 
-                if (existingLabels.Where(x => x == ret).FirstOrDefault() == null)
+                if (Labels.Where(x => x == ret).FirstOrDefault() == null)
                     gotIt = true;
             }
-            existingLabels.Add(ret);
+            Labels.Add(ret);
 
             return (includeColonAndPadding ? "    " : "") + ret + (includeColonAndPadding ? ":  " : "");
         }

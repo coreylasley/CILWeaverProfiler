@@ -4,8 +4,14 @@ using System.IO;
 
 namespace ReferenceApp
 {
+
+    /****************************************************************************************************
+     * This is a sandbox program that can be used for disassembly to inspect IL
+     ****************************************************************************************************/
+
     class Program
     {
+       
         static void Main(string[] args)
         {
             NoLogging(234, "This is a test", DateTime.Now);
@@ -43,7 +49,7 @@ namespace ReferenceApp
 
             stopWatch.Stop();
 
-            File.AppendAllText("Logging -> " + stopWatch.ElapsedMilliseconds, @"c:\Temp\Does\Test.log");
+            File.AppendAllText("Logging -> " + stopWatch.ElapsedMilliseconds, @"c:\Temp\Test.log");
         }
         */
     }

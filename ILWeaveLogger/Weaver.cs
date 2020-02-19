@@ -9,7 +9,9 @@ namespace ILWeaveLogger
 {
     public class Weaver
     {
-        public string ilasmPaths { get; set; } = @"C:\Program Files (x86)\Microsoft SDKs\Windows\;C:\Windows\Microsoft.NET\Framework\v4.0.30319\"; // "v10.0A\bin\NETFX 4.8 Tools\";
+        public string ilasmPaths { get; set; } = @"C:\Program Files (x86)\Microsoft SDKs\Windows\;C:\Windows\Microsoft.NET\Framework\v4.0.30319\";
+
+        private string fileExtension;
 
         /// <summary>
         /// Assembles IL code into an executable
@@ -34,10 +36,9 @@ namespace ILWeaveLogger
                        
             string ilasm = GetLatestILExe(ilasmPaths, "ilasm.exe");
             string workingPath = Path.GetDirectoryName(ilasm);
-            ProcessStartInfo procStartInfo = new ProcessStartInfo(ilasm, toPath + " /dll");
+            ProcessStartInfo procStartInfo = new ProcessStartInfo(ilasm, toPath + " /" + fileExtension);
             procStartInfo.WorkingDirectory = workingPath;
-            //procStartInfo.CreateNoWindow = false;
-
+            
             Process process = new Process();
             process.StartInfo = procStartInfo;
 
@@ -67,6 +68,9 @@ namespace ILWeaveLogger
         {
             string text = "";
             string toPath = temporaryPath + "temp.il";
+
+            fileExtension = Path.GetExtension(executableFileName).Replace(".","");
+
             ProcessStartInfo procStartInfo = new ProcessStartInfo(GetLatestILExe(ilasmPaths, "ildasm.exe"), executableFileName + " /output:" + toPath);
             procStartInfo.CreateNoWindow = false;
 
@@ -90,7 +94,7 @@ namespace ILWeaveLogger
         /// </summary>
         /// <param name="IL">Disassembled IL code</param>
         /// <returns>Modified IL code with logging functionality</returns>
-        public List<Class> UnpackILCode(string IL)
+        public Assembly ParseILCode(string IL)
         {
             bool inClass = false;
             bool inMethodDef = false;
@@ -100,22 +104,16 @@ namespace ILWeaveLogger
             int methodCount = 0;
 
             int nameEnd = 0;
-
             int lineNumber = -1;
-                        
-            string l, label;
-
-            Parameter paramItem;
-
-            List<Class> classes = new List<Class>();
-            Class currentClass = new Class();
             int classCount = 0;
 
-            //List<Method> methods = new List<Method>();
-            Method currentMethod = new Method();            
-
-            StringBuilder template = new StringBuilder();
-
+            string l, label;
+                        
+            Assembly assembly = new Assembly();
+            Class currentClass = new Class();
+            Method currentMethod = new Method();
+            Parameter paramItem;
+            
             bool includeLine = true;
             bool alreadyGotParameterOnThisLine = false;
 
@@ -135,6 +133,8 @@ namespace ILWeaveLogger
                 if (!inClass && l.StartsWith(".class"))
                 {                    
                     currentClass.ClassName = ExtractClassName(l);
+
+                    assembly.LinesOfCode.Add("!!!" + currentClass.ClassName + "!!!");
 
                     inClass = true;
                 }
@@ -221,8 +221,7 @@ namespace ILWeaveLogger
                     {
                         inInit = true;
                         includeLine = false;
-                        currentMethod.LinesOfCode.Add("    ***" + currentMethod.MethodName + "_LOCALS INIT***");
-                        //template.AppendLine("    ***" + currentMethod.MethodName + "_LOCALS INIT***");
+                        currentMethod.LinesOfCode.Add("    ***" + currentMethod.MethodName + "_LOCALS INIT***");                        
                     }
 
                     if (inInit && l.Contains("V_"))
@@ -249,17 +248,14 @@ namespace ILWeaveLogger
                         if (currentMethod.InitTypes.Count == 0)
                         {
                             currentMethod.LinesOfCode.Add("***" + currentMethod.MethodName + "_LOCALS INIT***");
-                            //template.AppendLine("***" + currentMethod.MethodName + "_LOCALS INIT***");
                         }
 
                         // Insert this line
                         currentMethod.LinesOfCode.Add("    IL_0000:  nop");
-                        //template.AppendLine("    IL_0000:  nop");
-
+                        
                         // Finally, insert the placeholder for the method start logging
                         currentMethod.LinesOfCode.Add("***" + currentMethod.MethodName + "_START***");
-                        //template.AppendLine("***" + currentMethod.MethodName + "_START***");
-
+                        
                         // Since we already inserted the line from the IL above, we dont want to add it again at the end of the loop
                         includeLine = false;
                     }
@@ -276,8 +272,7 @@ namespace ILWeaveLogger
                         // Is this line where the method returns?
                         if (l == label + ":  ret")
                         {
-                            currentMethod.LinesOfCode.Add("***" + currentMethod.MethodName + "_END***");
-                            //template.AppendLine("***" + currentMethod.MethodName + "_END***");
+                            currentMethod.LinesOfCode.Add("***" + currentMethod.MethodName + "_END***");                            
                         }
                     }
                     else if (l.Contains("IL_")) // If it doesnt start with a label, but contains one, we have found a GOTO
@@ -296,7 +291,7 @@ namespace ILWeaveLogger
                         currentClass.LinesOfCode.Add(l);
 
                         // Add the current class to our class list
-                        classes.Add(currentClass);
+                        assembly.Classes.Add(currentClass);
                         classCount++;
 
                         currentClass = new Class();
@@ -313,27 +308,23 @@ namespace ILWeaveLogger
                         currentMethod.LinesOfCode.Add(line);
                     else if (inClass)
                         currentClass.LinesOfCode.Add(line);
-
-                    template.AppendLine(line);
+                    else
+                        assembly.LinesOfCode.Add(line);                                        
                 }
             }
-
-            //return ReplacePlaceholders(template.ToString(), methods);
-
-            return classes;
+            
+            return assembly;
         }
 
         private string ExtractClassName(string line)
         {
-            string ret = "";
+            string ret;
 
             string[] parts = line.Split('.');
             ret = parts[parts.Length - 1];
 
             return ret;
         }
-
-
 
 
         /// <summary>

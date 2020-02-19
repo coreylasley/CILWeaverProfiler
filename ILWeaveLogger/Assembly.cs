@@ -1,19 +1,24 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using System.IO;
 
 namespace ILWeaveLogger
 {
-    public class Class
+    public class Assembly
     {
-        public string ClassName { get; set; }
-        public List<Method> Methods { get; set; } = new List<Method>();
+        public List<Class> Classes { get; set; } = new List<Class>();
         public List<string> LinesOfCode { get; set; } = new List<string>();
+
+        public void WriteILCodeFile(string fileName)
+        {
+            File.WriteAllText(fileName, GenerateAssemblyILCode());
+        }
 
         /// <summary>
         /// Returns the Class that has been modified for profiling
         /// </summary>
         /// <returns></returns>
-        public string GenerateClassILCode()
+        public string GenerateAssemblyILCode()
         {
             StringBuilder IL = new StringBuilder();
             foreach (string line in LinesOfCode)
@@ -32,11 +37,11 @@ namespace ILWeaveLogger
         /// <returns>IL Code</returns>
         private string ReplacePlaceholders(string IL)
         {
-            foreach (Method m in Methods)
+            foreach (Class m in Classes)
             {
-                IL = IL.Replace("%%%" + m.MethodName + "%%%", m.GenerateMethodILCode());
+                IL = IL.Replace("!!!" + m.ClassName + "!!!", m.GenerateClassILCode());
             }
-            
+
             return IL;
         }
     }
