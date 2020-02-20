@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 
-namespace ILWeaveLogger
+namespace ILWeaveProfiler.Models
 {
     public class Method
     {
@@ -166,7 +166,19 @@ namespace ILWeaveLogger
 
         private string GenerateBlock_ExecutionLogging()
         {
-            return "";
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine(GenerateUniqueLabel() + "stloc.s    V_" + (InitTypes.Count-1));
+            sb.AppendLine(GenerateUniqueLabel() + "ldloc.1");
+            sb.AppendLine(GenerateUniqueLabel() + "callvirt instance void [System.Runtime.Extensions]System.Diagnostics.Stopwatch::Stop()");
+            sb.AppendLine(GenerateUniqueLabel() + "nop");
+            sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + MethodName + "\"");
+            sb.AppendLine(GenerateUniqueLabel() + "ldloc.0");
+            sb.AppendLine(GenerateUniqueLabel() + "ldloc.1");
+            sb.AppendLine(GenerateUniqueLabel() + "callvirt instance int64[System.Runtime.Extensions]System.Diagnostics.Stopwatch::get_ElapsedMilliseconds()");
+            sb.AppendLine(GenerateUniqueLabel() + "call       void @@@Assembly@@@.@@@Class@@@::@@@MethodOverride@@@(string,");
+            sb.AppendLine("                                                      string,");
+            sb.AppendLine("                                                      int64)");
+            return sb.ToString();
         }
 
         /// <summary>

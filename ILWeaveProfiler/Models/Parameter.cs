@@ -1,4 +1,4 @@
-﻿namespace ILWeaveLogger
+﻿namespace ILWeaveProfiler.Models
 {
     public class Parameter
     {

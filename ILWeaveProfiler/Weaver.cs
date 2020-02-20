@@ -3,12 +3,24 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 
-namespace ILWeaveLogger
+using ILWeaveProfiler.Models;
+
+namespace ILWeaveProfiler
 {
+    public enum ILWeaveLoggingTypes
+    {
+        All,
+        ExecutionTimeOnly,
+        ParameterValuesOnly,
+        None
+    }
+
     public class Weaver
     {
+        /// <summary>
+        /// Closest paths to the ILASM and ILDASM executables (comma delimited)
+        /// </summary>
         public string ilasmPaths { get; set; } = @"C:\Program Files (x86)\Microsoft SDKs\Windows\;C:\Windows\Microsoft.NET\Framework\v4.0.30319\";
 
         private string fileExtension;

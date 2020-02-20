@@ -3,9 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29709.97
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILWeaveLogger", "ILWeaveLogger\ILWeaveLogger.csproj", "{5B508C3B-9B6B-4494-8A3D-5D3A0A4AFCC9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILWeaver", "ILWeaveLogger\ILWeaver.csproj", "{5B508C3B-9B6B-4494-8A3D-5D3A0A4AFCC9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReferenceApp", "ReferenceApp\ReferenceApp.csproj", "{D39DBF89-83DD-4659-B1E3-C8F74D09C66E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReferenceApp", "ReferenceApp\ReferenceApp.csproj", "{D39DBF89-83DD-4659-B1E3-C8F74D09C66E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILWeaveProfiler", "ILWeaveProfiler\ILWeaveProfiler.csproj", "{209AD7E8-E1C0-4196-84E3-F52118C1BAD0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestAppToWeave", "TestAppToWeave\TestAppToWeave.csproj", "{D4A5A5BB-25EC-4697-9148-771F714A3F4C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +25,14 @@ Global
 		{D39DBF89-83DD-4659-B1E3-C8F74D09C66E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D39DBF89-83DD-4659-B1E3-C8F74D09C66E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D39DBF89-83DD-4659-B1E3-C8F74D09C66E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{209AD7E8-E1C0-4196-84E3-F52118C1BAD0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{209AD7E8-E1C0-4196-84E3-F52118C1BAD0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{209AD7E8-E1C0-4196-84E3-F52118C1BAD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{209AD7E8-E1C0-4196-84E3-F52118C1BAD0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4A5A5BB-25EC-4697-9148-771F714A3F4C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4A5A5BB-25EC-4697-9148-771F714A3F4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4A5A5BB-25EC-4697-9148-771F714A3F4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4A5A5BB-25EC-4697-9148-771F714A3F4C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

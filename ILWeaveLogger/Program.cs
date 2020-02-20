@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ILWeaveLogger
+using ILWeaveProfiler;
+using ILWeaveProfiler.Models;
+
+namespace ILWeaver
 {
     class Program
     {
@@ -15,8 +18,10 @@ namespace ILWeaveLogger
             // Parse the disassembled IL Code
             Assembly asm = w.ParseILCode(IL);
 
+            Console.WriteLine(IL);
+
             // Display the modified IL Code
-            Console.WriteLine(asm.GenerateAssemblyILCode());                        
+            //Console.WriteLine(asm.GenerateAssemblyILCode());                        
         }
     }
 }
