@@ -15,6 +15,7 @@ namespace ILWeaveProfiler
         ParameterValuesOnly,
         None
     }
+      
 
     public class Weaver
     {
@@ -24,6 +25,8 @@ namespace ILWeaveProfiler
         public string ilasmPaths { get; set; } = @"C:\Program Files (x86)\Microsoft SDKs\Windows\;C:\Windows\Microsoft.NET\Framework\v4.0.30319\";
 
         private string fileExtension;
+
+        private const string LoggingMethodOverride = "[ILWeaveProfiler]ILWeaveProfiler.Attributes.LoggingMethodOverrideAttribute";
 
         /// <summary>
         /// Assembles IL code into an executable
@@ -209,7 +212,12 @@ namespace ILWeaveProfiler
                 if (l == "{" && inMethod)
                 {
                     inMethodBody = true;   
-                }                
+                }       
+                
+                if (inMethod && l.Contains(LoggingMethodOverride))
+                {
+                    currentMethod.IsLoggingMethodOverride = true;
+                }
 
                 if (l.Contains("// end of method"))
                 {
@@ -229,6 +237,15 @@ namespace ILWeaveProfiler
                 // If we are inside the body of the method...
                 if (inMethodBody)
                 {
+                    if (l.StartsWith(".maxstack"))
+                    {
+                        string[] ms = l.Split(' ');
+                        currentMethod.MaxStack = Convert.ToInt32(ms[ms.Length - 1]);
+                        includeLine = false;
+                        currentMethod.LinesOfCode.Add("    .maxstack  &&&maxstack&&&");
+
+                    }
+
                     if (l.Contains(".locals init"))
                     {
                         inInit = true;

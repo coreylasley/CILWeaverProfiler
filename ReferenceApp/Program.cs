@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using ILWeaveProfiler.Attributes;
 
 namespace ReferenceApp
 {
@@ -31,6 +32,7 @@ namespace ReferenceApp
             //LogIt("NoLogging", "intObject=1; stringObject=TEST; dateTimeObject=12:00:00", stopwatch.ElapsedMilliseconds);
         }
 
+        [LoggingMethodOverride]
         static void LogIt(string methodName, string parameters, long milliseconds)
         {
             //Console.WriteLine("LOGGING -> " + methodName + "(" + parameters + ") executed in: " + milliseconds);

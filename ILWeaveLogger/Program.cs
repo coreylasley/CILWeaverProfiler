@@ -18,10 +18,10 @@ namespace ILWeaver
             // Parse the disassembled IL Code
             Assembly asm = w.ParseILCode(IL);
 
-            Console.WriteLine(IL);
+            //Console.WriteLine(IL);
 
             // Display the modified IL Code
-            //Console.WriteLine(asm.GenerateAssemblyILCode());                        
+            Console.WriteLine(asm.GenerateAssemblyILCode());                        
         }
     }
 }

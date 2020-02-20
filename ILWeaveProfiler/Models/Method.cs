@@ -6,6 +6,7 @@ namespace ILWeaveProfiler.Models
 {
     public class Method
     {
+       
         public string MethodName { get; set; } = "";
         
         public List<Parameter> Parameters { get; set; } = new List<Parameter>();
@@ -13,7 +14,10 @@ namespace ILWeaveProfiler.Models
         public List<string> Gotos { get; set; } = new List<string>();
         public List<string> InitTypes { get; set; } = new List<string>();
         public List<string> LinesOfCode { get; set; } = new List<string>();
+        public int MaxStack { get; set; }
+        public bool IsLoggingMethodOverride { get; set; }
 
+        
 
         /// <summary>
         /// Returns the IL Method that has been modified for profiling
@@ -41,6 +45,7 @@ namespace ILWeaveProfiler.Models
             IL = IL.Replace("***" + MethodName + "_LOCALS INIT***", GenerateBlock_LocalInit());
             IL = IL.Replace("***" + MethodName + "_START***", GenerateBlock_ParameterLogging());
             IL = IL.Replace("***" + MethodName + "_END***", GenerateBlock_ExecutionLogging());
+            IL = IL.Replace("&&&maxstack&&&", (IsLoggingMethodOverride ? MaxStack : (Parameters.Count + 4)).ToString());
 
             return IL;
         }
@@ -55,24 +60,28 @@ namespace ILWeaveProfiler.Models
         private string GenerateBlock_ParameterLogging()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.s " + Parameters.Count * 2);
-            sb.AppendLine(GenerateUniqueLabel() + "newarr     [System.Runtime]System.String");
-            sb.AppendLine(GenerateUniqueLabel() + "dup\n");
 
-            int y = 0;
-            for (int x = 0; x < Parameters.Count; x++)
+            if (!IsLoggingMethodOverride)
             {
-                sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + y);
-                sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + Parameters[x].Name + "=\"");
-                sb.AppendLine(GenerateUniqueLabel() + "dup");
-
-                sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
-                sb.AppendLine(GenerateUniqueLabel() + "ldarga.s   " + Parameters[x].Name);
-                sb.AppendLine(GenerateUniqueLabel() + "call       instance string " + ToCILType(Parameters[x].Type) + "::ToString()");
-                sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
+                sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.s " + Parameters.Count * 2);
+                sb.AppendLine(GenerateUniqueLabel() + "newarr     [System.Runtime]System.String");
                 sb.AppendLine(GenerateUniqueLabel() + "dup\n");
 
-                y += 2;
+                int y = 0;
+                for (int x = 0; x < Parameters.Count; x++)
+                {
+                    sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + y);
+                    sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + Parameters[x].Name + "=\"");
+                    sb.AppendLine(GenerateUniqueLabel() + "dup");
+
+                    sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
+                    sb.AppendLine(GenerateUniqueLabel() + "ldarga.s   " + Parameters[x].Name);
+                    sb.AppendLine(GenerateUniqueLabel() + "call       instance string " + ToCILType(Parameters[x].Type) + "::ToString()");
+                    sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
+                    sb.AppendLine(GenerateUniqueLabel() + "dup\n");
+
+                    y += 2;
+                }
             }
 
             return sb.ToString();
@@ -167,17 +176,22 @@ namespace ILWeaveProfiler.Models
         private string GenerateBlock_ExecutionLogging()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine(GenerateUniqueLabel() + "stloc.s    V_" + (InitTypes.Count-1));
-            sb.AppendLine(GenerateUniqueLabel() + "ldloc.1");
-            sb.AppendLine(GenerateUniqueLabel() + "callvirt instance void [System.Runtime.Extensions]System.Diagnostics.Stopwatch::Stop()");
-            sb.AppendLine(GenerateUniqueLabel() + "nop");
-            sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + MethodName + "\"");
-            sb.AppendLine(GenerateUniqueLabel() + "ldloc.0");
-            sb.AppendLine(GenerateUniqueLabel() + "ldloc.1");
-            sb.AppendLine(GenerateUniqueLabel() + "callvirt instance int64[System.Runtime.Extensions]System.Diagnostics.Stopwatch::get_ElapsedMilliseconds()");
-            sb.AppendLine(GenerateUniqueLabel() + "call       void @@@Assembly@@@.@@@Class@@@::@@@MethodOverride@@@(string,");
-            sb.AppendLine("                                                      string,");
-            sb.AppendLine("                                                      int64)");
+            
+            // We clearly don't want to do this if this is the logging method override, as this will cause infinite recursion 
+            if (!IsLoggingMethodOverride)
+            {
+                sb.AppendLine(GenerateUniqueLabel() + "stloc.s    V_" + (InitTypes.Count - 1));
+                sb.AppendLine(GenerateUniqueLabel() + "ldloc.1");
+                sb.AppendLine(GenerateUniqueLabel() + "callvirt instance void [System.Runtime.Extensions]System.Diagnostics.Stopwatch::Stop()");
+                sb.AppendLine(GenerateUniqueLabel() + "nop");
+                sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + MethodName + "\"");
+                sb.AppendLine(GenerateUniqueLabel() + "ldloc.0");
+                sb.AppendLine(GenerateUniqueLabel() + "ldloc.1");
+                sb.AppendLine(GenerateUniqueLabel() + "callvirt instance int64[System.Runtime.Extensions]System.Diagnostics.Stopwatch::get_ElapsedMilliseconds()");
+                sb.AppendLine(GenerateUniqueLabel() + "call       void @@@Assembly@@@.@@@Class@@@::@@@MethodOverride@@@(string,");
+                sb.AppendLine("                                                      string,");
+                sb.AppendLine("                                                      int64)");
+            }
             return sb.ToString();
         }
 
@@ -190,11 +204,21 @@ namespace ILWeaveProfiler.Models
         {
             string ret = ".locals init (";
 
-            ret += "string V_0,\nclass [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_1" + (InitTypes.Count > 0 ? "," : ")") + "\n";
-
-            for (int x = 0; x < InitTypes.Count; x++)
+            if (!IsLoggingMethodOverride)
             {
-                ret += InitTypes[x] + " V_" + (x + 2) + (x < InitTypes.Count - 1 ? "," : ")") + "\n";
+                ret += "string V_0,\nclass [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_1" + (InitTypes.Count > 0 ? "," : ")") + "\n";
+
+                for (int x = 0; x < InitTypes.Count; x++)
+                {
+                    ret += InitTypes[x] + " V_" + (x + 2) + (x < InitTypes.Count - 1 ? "," : ")") + "\n";
+                }
+            }
+            else
+            {
+                for (int x = 0; x < InitTypes.Count; x++)
+                {
+                    ret += InitTypes[x] + " V_" + (x) + (x < InitTypes.Count - 1 ? "," : ")") + "\n";
+                }
             }
 
             return ret;

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace ILWeaveProfiler.Models
@@ -34,7 +35,13 @@ namespace ILWeaveProfiler.Models
         {
             foreach (Method m in Methods)
             {
-                IL = IL.Replace("%%%" + m.MethodName + "%%%", m.GenerateMethodILCode());
+                IL = IL.Replace("%%%" + m.MethodName + "%%%", m.GenerateMethodILCode().Replace("@@@Class@@@", ClassName));
+            }
+
+            Method methodOverride = Methods.Where(x => x.IsLoggingMethodOverride).FirstOrDefault();
+            if (methodOverride != null)
+            {
+                IL = IL.Replace("@@@MethodOverride@@@", methodOverride.MethodName);
             }
             
             return IL;
