@@ -5,15 +5,19 @@ using System.Diagnostics;
 using System.IO;
 using ILWeaveProfiler.Attributes;
 
-namespace ReferenceApp
+namespace ReferenceApp 
 {
 
     /****************************************************************************************************
      * This is a sandbox program that can be used for disassembly to inspect IL to figure out 
-     * what IL code looks like for a given .NET code block
+     * what IL code looks like for a given .NET code block.
+     * 
+     * 1. Make code changes here
+     * 2. Build this program
+     * 3. Run the ILWeaver program, which will disassemble this program
      ****************************************************************************************************/
 
-    class Program
+    class Program : ILWeaveProfiler.CILWeaverLoggerBase
     {
        
         static void Main(string[] args)

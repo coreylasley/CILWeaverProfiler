@@ -30,7 +30,7 @@ namespace ILWeaveProfiler.Models
         /// Returns the IL Method that has been modified for profiling
         /// </summary>
         /// <returns></returns>
-        public string GenerateMethodILCode()
+        public string GenerateMethodILCode(int maxStringLength = 0)
         {
             StringBuilder IL = new StringBuilder();
             foreach(string line in LinesOfCode)
@@ -38,7 +38,7 @@ namespace ILWeaveProfiler.Models
                 IL.AppendLine(line);
             }
 
-            return ReplacePlaceholders(IL.ToString());
+            return ReplacePlaceholders(IL.ToString(), maxStringLength);
         }
 
         /// <summary>
@@ -47,10 +47,10 @@ namespace ILWeaveProfiler.Models
         /// <param name="IL"></param>
         /// <param name="methods"></param>
         /// <returns>IL Code</returns>
-        private string ReplacePlaceholders(string IL)
+        private string ReplacePlaceholders(string IL, int maxStringLength = 0)
         {
             IL = IL.Replace("***" + MethodName + "_LOCALS INIT***", GenerateBlock_LocalInit());
-            IL = IL.Replace("***" + MethodName + "_START***", GenerateBlock_ParameterLogging());
+            IL = IL.Replace("***" + MethodName + "_START***", GenerateBlock_ParameterLogging(maxStringLength));
             IL = IL.Replace("***" + MethodName + "_END***", GenerateBlock_ExecutionLogging());
             IL = IL.Replace("&&&maxstack&&&", (IsLoggingMethodOverride ? MaxStack : (Parameters.Count + 4)).ToString());
 
@@ -64,7 +64,7 @@ namespace ILWeaveProfiler.Models
         /// <param name="parameters"></param>
         /// <param name="existingLabels"></param>
         /// <returns>IL code</returns>
-        private string GenerateBlock_ParameterLogging()
+        private string GenerateBlock_ParameterLogging(int maxStringLength = 0)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -75,6 +75,7 @@ namespace ILWeaveProfiler.Models
                 sb.AppendLine(GenerateUniqueLabel() + "dup\n");
 
                 int y = 0;
+                string cliType = "";
                 for (int x = 0; x < Parameters.Count; x++)
                 {
                     sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + y);
@@ -83,7 +84,13 @@ namespace ILWeaveProfiler.Models
 
                     sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
                     sb.AppendLine(GenerateUniqueLabel() + "ldarga.s   " + Parameters[x].Name);
-                    sb.AppendLine(GenerateUniqueLabel() + "call       instance string " + ToCILType(Parameters[x].Type) + "::ToString()");
+
+                    cliType = ToCILType(Parameters[x].Type);
+                    if (cliType != "IEnumerable")
+                        sb.AppendLine(GenerateUniqueLabel() + "call       instance string " + cliType + "::ToString()");
+                    else
+                        sb.AppendLine(GenerateUniqueLabel() + "******* FIGURE OUT HOW TO CONVERT AN IENUMERABLE ************** ");
+
                     sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
                     sb.AppendLine(GenerateUniqueLabel() + "dup\n");
 
@@ -169,7 +176,9 @@ namespace ILWeaveProfiler.Models
                         ret += "Char";
                         break;
                     default:
-                        if (type.StartsWith("valuetype "))
+                        if (type.Contains(""))
+                            ret = "IEnumerable";
+                        else if (type.StartsWith("valuetype "))
                             ret = ret.Replace("valuetype ", "");
                         else
                             ret += "Object";

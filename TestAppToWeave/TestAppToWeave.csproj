@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ILWeaveProfiler\ILWeaveProfiler.csproj" />
+    <ProjectReference Include="..\ILWeaveProfiler\CILWeaveProfiler.csproj" />
   </ItemGroup>
 
 </Project>

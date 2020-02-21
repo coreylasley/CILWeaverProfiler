@@ -159,6 +159,11 @@ namespace ILWeaveProfiler
                     inClass = true;
                 }
 
+                if (inClass && l.Contains("extends [ILWeaveProfiler]ILWeaveProfiler.CILWeaverLoggerBase"))
+                {
+                    currentClass.InheritsBase = true;
+                }
+
                 // Did we hit the first line of a Method definition?
                 if (inClass && l.StartsWith(".method ") && !l.Contains("specialname rtspecialname"))
                 {                   

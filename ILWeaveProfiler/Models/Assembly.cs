@@ -19,7 +19,7 @@ namespace ILWeaveProfiler.Models
         /// Returns the Class that has been modified for profiling
         /// </summary>
         /// <returns></returns>
-        public string GenerateAssemblyILCode()
+        public string GenerateAssemblyILCode(int maxStringLength = 0, int maxEnumerableCount = 0)
         {
             StringBuilder IL = new StringBuilder();
             foreach (string line in LinesOfCode)
@@ -27,7 +27,7 @@ namespace ILWeaveProfiler.Models
                 IL.AppendLine(line);
             }
 
-            return ReplacePlaceholders(IL.ToString());
+            return ReplacePlaceholders(IL.ToString(), maxStringLength, maxEnumerableCount);
         }
 
         /// <summary>
@@ -36,11 +36,11 @@ namespace ILWeaveProfiler.Models
         /// <param name="IL"></param>
         /// <param name="methods"></param>
         /// <returns>IL Code</returns>
-        private string ReplacePlaceholders(string IL)
+        private string ReplacePlaceholders(string IL, int maxStringLength = 0, int maxEnumerableCount = 0)
         {
-            foreach (Class m in Classes)
+            foreach (Class c in Classes)
             {
-                IL = IL.Replace("!!!" + m.ClassName + "!!!", m.GenerateClassILCode().Replace("@@@Assembly@@@", AssemblyName));
+                IL = IL.Replace("!!!" + c.ClassName + "!!!", c.GenerateClassILCode(maxStringLength, maxEnumerableCount).Replace("@@@Assembly@@@", AssemblyName));
             }
 
             return IL;
