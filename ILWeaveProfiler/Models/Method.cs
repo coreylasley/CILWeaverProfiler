@@ -17,6 +17,13 @@ namespace ILWeaveProfiler.Models
         public int MaxStack { get; set; }
         public bool IsLoggingMethodOverride { get; set; }
 
+        public bool ContainsEnumerableParameters
+        {
+            get
+            {
+                return Parameters.Where(x => x.IsEnumerable).FirstOrDefault() != null ? true : false;
+            }
+        }
         
 
         /// <summary>
@@ -177,7 +184,7 @@ namespace ILWeaveProfiler.Models
         {
             StringBuilder sb = new StringBuilder();
             
-            // We clearly don't want to do this if this is the logging method override, as this will cause infinite recursion 
+            // We REALLY don't want to do this if this is the logging method override, as this will cause infinite recursion in the re-assembled app :-O
             if (!IsLoggingMethodOverride)
             {
                 sb.AppendLine(GenerateUniqueLabel() + "stloc.s    V_" + (InitTypes.Count - 1));
@@ -194,6 +201,7 @@ namespace ILWeaveProfiler.Models
             }
             return sb.ToString();
         }
+                
 
         /// <summary>
         /// Rebuilds the ".locals init" section of a method with the addition of a StopWatch

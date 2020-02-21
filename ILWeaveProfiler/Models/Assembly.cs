@@ -6,6 +6,7 @@ namespace ILWeaveProfiler.Models
 {
     public class Assembly
     {
+        public string AssemblyName { get; set; }
         public List<Class> Classes { get; set; } = new List<Class>();
         public List<string> LinesOfCode { get; set; } = new List<string>();
 
@@ -39,7 +40,7 @@ namespace ILWeaveProfiler.Models
         {
             foreach (Class m in Classes)
             {
-                IL = IL.Replace("!!!" + m.ClassName + "!!!", m.GenerateClassILCode());
+                IL = IL.Replace("!!!" + m.ClassName + "!!!", m.GenerateClassILCode().Replace("@@@Assembly@@@", AssemblyName));
             }
 
             return IL;

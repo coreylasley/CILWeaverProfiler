@@ -105,7 +105,7 @@ namespace ILWeaveProfiler
         }
 
         /// <summary>
-        /// Modifies the IL code for method time execution and parameter logging
+        /// Parses the IL code for into an Assembly object
         /// </summary>
         /// <param name="IL">Disassembled IL code</param>
         /// <returns>Modified IL code with logging functionality</returns>
@@ -144,10 +144,15 @@ namespace ILWeaveProfiler
 
                 l = line.Trim();
 
+                if (!inClass && l.StartsWith(".assembly") && !l.Contains(" extern "))
+                {
+                    assembly.AssemblyName = l.Split(' ').LastOrDefault();
+                }
+
                 // Did we hit the first line of a Class definition?
                 if (!inClass && l.StartsWith(".class"))
                 {                    
-                    currentClass.ClassName = ExtractClassName(l);
+                    currentClass.ClassName = l.Split('.').LastOrDefault(); ;
 
                     assembly.LinesOfCode.Add("!!!" + currentClass.ClassName + "!!!");
 
@@ -219,7 +224,7 @@ namespace ILWeaveProfiler
                     currentMethod.IsLoggingMethodOverride = true;
                 }
 
-                if (l.Contains("// end of method"))
+                if (inMethodBody && l.Contains("// end of method"))
                 {
                     currentMethod.LinesOfCode.Add(l);
 
@@ -345,17 +350,7 @@ namespace ILWeaveProfiler
             return assembly;
         }
 
-        private string ExtractClassName(string line)
-        {
-            string ret;
-
-            string[] parts = line.Split('.');
-            ret = parts[parts.Length - 1];
-
-            return ret;
-        }
-
-
+       
         /// <summary>
         /// Locates the latest version of an executable in all sub-directories of a root path if the executable is not found in the path specified
         /// </summary>
