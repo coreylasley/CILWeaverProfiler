@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using ILWeaveProfiler.Attributes;
 
 namespace ReferenceApp 
@@ -119,6 +120,46 @@ namespace ReferenceApp
             string c = a + b;
 
         }
+
+
+        private string Get___Enumerable___AsListString___<T>(IEnumerable<T> enumerable, bool isNumeric)
+        {
+            StringBuilder ret = new StringBuilder();
+
+            int x = 0;
+            int maxCount = 10;
+            int maxStringSize = 100;
+            string item;
+
+            ret.Append("[");
+            foreach (var i in enumerable)
+            {
+                x++;
+                if (x > 0) ret.Append(", ");
+
+                item = i.ToString();
+
+                if (!isNumeric)
+                {
+                    if (item.Length > maxStringSize && maxStringSize > 0)
+                        item = item.Substring(0, maxStringSize) + " ... ";
+
+                    item = "\"" + item.Replace("\"", "\\\"") + "\"";
+                }
+
+                ret.Append(item);
+
+                if (x == maxCount && maxCount > 0)
+                {
+                    ret.Append(", ...");
+                    break;
+                }
+            }
+            ret.Append("]");
+
+            return ret.ToString();
+        }
+
 
     }
 }

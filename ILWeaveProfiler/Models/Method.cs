@@ -60,9 +60,7 @@ namespace ILWeaveProfiler.Models
         /// <summary>
         /// Generates the Parameter Logging IL code block
         /// </summary>
-        /// <param name="methodName"></param>
-        /// <param name="parameters"></param>
-        /// <param name="existingLabels"></param>
+        /// <param name="maxStringLength">The max length of string values before truncation, 0 means no limit</param>
         /// <returns>IL code</returns>
         private string GenerateBlock_ParameterLogging(int maxStringLength = 0)
         {

@@ -1,0 +1,43 @@
+﻿@page "/ilstringify"
+
+<h1>IL Stringify</h1>
+<p>This is a simple utility to turn an IL code block into C# string assignment code, so it can be used in the CILWeaveProfiler. 
+    
+    Paste your IL code and then click the "Stringify It!" button.</p>
+
+<br />
+IL Code<br />
+<textarea rows="25" cols="100" @bind="ilcode"></textarea>
+<br />
+
+<button class="btn btn-primary" @onclick="StringifyIt">Stringify It!</button>
+
+<br /><br />
+Stringified C# Code<br />
+<textarea rows="25" cols="100" @bind="stringifiedcode"></textarea>
+
+@code {
+
+    private string ilcode;
+    private string stringifiedcode;
+
+    private System.Text.StringBuilder ret = new System.Text.StringBuilder();
+
+    private void StringifyIt()
+    {
+        if (ilcode != null && ilcode.Trim() != "")
+        {
+            string[] lines = ilcode.Split('\n');
+            ret.AppendLine("StringBuilder sb = new StringBuilder();");
+            foreach (string l in lines)
+            {
+                ret.AppendLine("sb.AppendLine(\"" + l.Replace("\"", "\\\"") + "\");");
+            }
+
+            stringifiedcode = ret.ToString();
+        }
+        else
+            stringifiedcode = "You need to give me some IL Code to work with!";
+
+    }
+}
