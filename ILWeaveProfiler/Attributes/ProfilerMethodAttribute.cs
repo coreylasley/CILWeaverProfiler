@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using ILWeaveProfiler;
+using CILWeaveProfiler;
 
-namespace ILWeaveProfiler.Attributes
+namespace CILWeaveProfiler.Attributes
 {
     [AttributeUsage(AttributeTargets.Method)]
     public class ProfilerMethodAttribute : Attribute

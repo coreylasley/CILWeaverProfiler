@@ -4,9 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-using ILWeaveProfiler.Models;
+using CILWeaveProfiler.Models;
 
-namespace ILWeaveProfiler
+namespace CILWeaveProfiler
 {
     public enum ILWeaveLoggingTypes
     {
@@ -26,7 +26,7 @@ namespace ILWeaveProfiler
 
         private string fileExtension;
 
-        private const string LoggingMethodOverride = "[ILWeaveProfiler]ILWeaveProfiler.Attributes.LoggingMethodOverrideAttribute";
+        private const string LoggingMethodOverride = "[CILWeaveProfiler]CILWeaveProfiler.Attributes.LoggingMethodOverrideAttribute";
 
         /// <summary>
         /// Assembles IL code into an executable

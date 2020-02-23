@@ -1,5 +1,5 @@
 ﻿using System;
-using ILWeaveProfiler.Attributes;
+using CILWeaveProfiler.Attributes;
 
 namespace TestAppToWeave
 {
@@ -8,7 +8,7 @@ namespace TestAppToWeave
      * This is a test program that the ILWeaver program will apply its magic
      ****************************************************************************************************/
 
-    [ProfilerClass(LoggingType = ILWeaveProfiler.ILWeaveLoggingTypes.All)]
+    [ProfilerClass(LoggingType = CILWeaveProfiler.ILWeaveLoggingTypes.All)]
     class Program
     {
         static void Main(string[] args)

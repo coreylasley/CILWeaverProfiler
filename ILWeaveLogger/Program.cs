@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using ILWeaveProfiler;
-using ILWeaveProfiler.Models;
+using CILWeaveProfiler;
+using CILWeaveProfiler.Models;
 
 namespace ILWeaver
 {

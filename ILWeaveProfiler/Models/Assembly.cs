@@ -2,7 +2,7 @@
 using System.Text;
 using System.IO;
 
-namespace ILWeaveProfiler.Models
+namespace CILWeaveProfiler.Models
 {
     public class Assembly
     {

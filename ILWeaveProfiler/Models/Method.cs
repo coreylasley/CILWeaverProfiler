@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 
-namespace ILWeaveProfiler.Models
+namespace CILWeaveProfiler.Models
 {
     public class Method
     {
@@ -78,16 +78,28 @@ namespace ILWeaveProfiler.Models
                 {
                     sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + y);
                     sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + Parameters[x].Name + "=\"");
-                    sb.AppendLine(GenerateUniqueLabel() + "dup");
-
-                    sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
-                    sb.AppendLine(GenerateUniqueLabel() + "ldarga.s   " + Parameters[x].Name);
+                    
 
                     cliType = ToCILType(Parameters[x].Type);
                     if (cliType != "IEnumerable")
+                    {
+                        sb.AppendLine(GenerateUniqueLabel() + "dup");
+                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
+                        sb.AppendLine(GenerateUniqueLabel() + "ldarga.s   " + Parameters[x].Name);
                         sb.AppendLine(GenerateUniqueLabel() + "call       instance string " + cliType + "::ToString()");
+                    }
                     else
-                        sb.AppendLine(GenerateUniqueLabel() + "******* FIGURE OUT HOW TO CONVERT AN IENUMERABLE ************** ");
+                    {                        
+                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
+                        sb.AppendLine(GenerateUniqueLabel() + "ldstr      " + Parameters[x].Name);
+                        sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
+                        sb.AppendLine(GenerateUniqueLabel() + "dup");
+                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.3");
+                        sb.AppendLine(GenerateUniqueLabel() + "ldarg.1");
+                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.1");
+                        sb.AppendLine(GenerateUniqueLabel() + "call       string @@@Assembly@@@.@@@Class@@@::@@@EnumerableMethod@@@(class [System.Runtime]System.Collections.IEnumerable,");
+                        sb.AppendLine(GenerateUniqueLabel() + "                                                                                         bool)");
+                    }
 
                     sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
                     sb.AppendLine(GenerateUniqueLabel() + "dup\n");

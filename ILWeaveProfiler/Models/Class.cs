@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 
-namespace ILWeaveProfiler.Models
+namespace CILWeaveProfiler.Models
 {
     public class Class
     {
@@ -17,6 +17,7 @@ namespace ILWeaveProfiler.Models
                 return Methods.Where(x => x.ContainsEnumerableParameters).FirstOrDefault() != null ? true : false;
             }
         }
+        public string EnumerableToStringMethodName = "Get___Enumerable___AsListString___";
 
         /// <summary>
         /// Returns the Class that has been modified for profiling
@@ -25,10 +26,14 @@ namespace ILWeaveProfiler.Models
         public string GenerateClassILCode(int maxStringLength = 0, int maxEnumerableCount = 0)
         {
             StringBuilder IL = new StringBuilder();
+
+            // Determine if we have a Method Override (used to handle the actual logging)
+            Method methodOverride = Methods.Where(x => x.IsLoggingMethodOverride).FirstOrDefault();
+
             for (int x = 0; x < LinesOfCode.Count; x++)
             {
                 // If the next line is the end of the Class code, and we have Methods that have IEnumerable parameters...
-                if (x + 1 == LinesOfCode.Count && ContainsMethodsWithEnumerableParameters)
+                if (x + 1 == LinesOfCode.Count && ContainsMethodsWithEnumerableParameters && methodOverride != null)
                 {
                     // Generate and append the Generic Enumberable to String Method to the IL Code
                     IL.Append(GenerateBlock_EnumerableToString(maxStringLength, maxEnumerableCount) + "\r");
@@ -59,7 +64,7 @@ namespace ILWeaveProfiler.Models
             Method methodOverride = Methods.Where(x => x.IsLoggingMethodOverride).FirstOrDefault();
             if (methodOverride != null)
             {                
-                IL = IL.Replace("@@@MethodOverride@@@", methodOverride.MethodName);
+                IL = IL.Replace("@@@MethodOverride@@@", methodOverride.MethodName).Replace("@@@EnumerableMethod@@@", EnumerableToStringMethodName);
             }
             
             return IL;
@@ -69,7 +74,7 @@ namespace ILWeaveProfiler.Models
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("  .method private hidebysig instance string");
-            sb.AppendLine("          Get___Enumerable___AsListString___<T>(class [System.Runtime]System.Collections.Generic.IEnumerable`1<!!T> enumerable,");
+            sb.AppendLine("          " + EnumerableToStringMethodName + "<T>(class [System.Runtime]System.Collections.Generic.IEnumerable`1<!!T> enumerable,");
             sb.AppendLine("                                                bool isNumeric) cil managed");
             sb.AppendLine("  {");
             sb.AppendLine("    // Code size       276 (0x114)");
@@ -91,9 +96,9 @@ namespace ILWeaveProfiler.Models
             sb.AppendLine("    IL_0006:  stloc.0");
             sb.AppendLine("    IL_0007:  ldc.i4.0");
             sb.AppendLine("    IL_0008:  stloc.1");
-            sb.AppendLine("    IL_0009:  ldc.i4.s   10");
+            sb.AppendLine("    IL_0009:  ldc.i4.s   " + maxEnumerableCount);
             sb.AppendLine("    IL_000b:  stloc.2");
-            sb.AppendLine("    IL_000c:  ldc.i4.s   100");
+            sb.AppendLine("    IL_000c:  ldc.i4.s   " + maxStringLength);
             sb.AppendLine("    IL_000e:  stloc.3");
             sb.AppendLine("    IL_000f:  ldloc.0");
             sb.AppendLine("    IL_0010:  ldstr      \"[\"");
@@ -228,22 +233,9 @@ namespace ILWeaveProfiler.Models
             sb.AppendLine("");
             sb.AppendLine("    IL_0111:  ldloc.s    V_11");
             sb.AppendLine("    IL_0113:  ret");
-            sb.AppendLine("  } // end of method Program::Get___Enumerable___AsListString___");
+            sb.AppendLine("  } // end of method Program::" + EnumerableToStringMethodName);
             sb.AppendLine("");
-            sb.AppendLine("  .method public hidebysig specialname rtspecialname");
-            sb.AppendLine("          instance void  .ctor() cil managed");
-            sb.AppendLine("  {");
-            sb.AppendLine("    // Code size       8 (0x8)");
-            sb.AppendLine("    .maxstack  8");
-            sb.AppendLine("    IL_0000:  ldarg.0");
-            sb.AppendLine("    IL_0001:  call       instance void [CILWeaveProfiler]ILWeaveProfiler.CILWeaverLoggerBase::.ctor()");
-            sb.AppendLine("    IL_0006:  nop");
-            sb.AppendLine("    IL_0007:  ret");
-            sb.AppendLine("  } // end of method Program::.ctor");
-            sb.AppendLine("");
-            sb.AppendLine("} // end of class ReferenceApp.Program");
-
-
+        
             return sb.ToString();
         }
     }

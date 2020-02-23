@@ -1,4 +1,4 @@
-﻿namespace ILWeaveProfiler.Models
+﻿namespace CILWeaveProfiler.Models
 {
     public class Parameter
     {
