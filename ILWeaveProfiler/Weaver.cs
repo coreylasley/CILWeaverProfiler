@@ -8,14 +8,13 @@ using CILWeaveProfiler.Models;
 
 namespace CILWeaveProfiler
 {
-    public enum ILWeaveLoggingTypes
+    public enum LoggingTypes
     {
         All,
         ExecutionTimeOnly,
         ParameterValuesOnly,
         None
-    }
-      
+    }      
 
     public class Weaver
     {
@@ -25,9 +24,8 @@ namespace CILWeaveProfiler
         public string ilasmPaths { get; set; } = @"C:\Program Files (x86)\Microsoft SDKs\Windows\;C:\Windows\Microsoft.NET\Framework\v4.0.30319\";
 
         private string fileExtension;
-
         private const string LoggingMethodOverride = "[CILWeaveProfiler]CILWeaveProfiler.Attributes.LoggingMethodOverrideAttribute";
-
+       
         /// <summary>
         /// Assembles IL code into an executable
         /// </summary>
@@ -158,12 +156,7 @@ namespace CILWeaveProfiler
 
                     inClass = true;
                 }
-
-                if (inClass && l.Contains("extends [ILWeaveProfiler]ILWeaveProfiler.CILWeaverLoggerBase"))
-                {
-                    currentClass.InheritsBase = true;
-                }
-
+                               
                 // Did we hit the first line of a Method definition?
                 if (inClass && l.StartsWith(".method ") && !l.Contains("specialname rtspecialname"))
                 {                   
@@ -224,6 +217,16 @@ namespace CILWeaveProfiler
                     inMethodBody = true;   
                 }       
                 
+                if (inClass && currentClass.LoggingType == null)
+                {
+                    currentClass.LoggingType = GetLoggingType(l);
+                }
+
+                if (inMethod && currentMethod.LoggingType == null)
+                {
+                    currentMethod.LoggingType = GetLoggingType(l);
+                }
+
                 if (inMethod && l.Contains(LoggingMethodOverride))
                 {
                     currentMethod.IsLoggingMethodOverride = true;
@@ -353,6 +356,21 @@ namespace CILWeaveProfiler
             }
             
             return assembly;
+        }
+
+        private LoggingTypes? GetLoggingType(string line)
+        {
+            LoggingTypes? ret = null;
+
+            if (line.EndsWith("// ggingType...."))
+            {
+                if (line.Contains("67 67 69 6E 67 54 79 70 65 00 00 00 00 )")) ret = LoggingTypes.All;                
+                if (line.Contains("67 67 69 6E 67 54 79 70 65 01 00 00 00 )")) ret = LoggingTypes.ExecutionTimeOnly;                
+                if (line.Contains("67 67 69 6E 67 54 79 70 65 02 00 00 00 )")) ret = LoggingTypes.ParameterValuesOnly;
+                if (line.Contains("67 67 69 6E 67 54 79 70 65 03 00 00 00 )")) ret = LoggingTypes.None;
+            }
+
+            return ret;
         }
 
        

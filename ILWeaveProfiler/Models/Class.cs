@@ -4,12 +4,15 @@ using System.Text;
 
 namespace CILWeaveProfiler.Models
 {
+    /// <summary>
+    /// A parsed representation of a Class from CIL Code
+    /// </summary>
     public class Class
     {
         public string ClassName { get; set; }
         public List<Method> Methods { get; set; } = new List<Method>();
         public List<string> LinesOfCode { get; set; } = new List<string>();
-        public bool InheritsBase { get; set; }
+        public LoggingTypes? LoggingType { get; set; }
         public bool ContainsMethodsWithEnumerableParameters
         {
             get
@@ -36,7 +39,7 @@ namespace CILWeaveProfiler.Models
                 if (x + 1 == LinesOfCode.Count && ContainsMethodsWithEnumerableParameters && methodOverride != null)
                 {
                     // Generate and append the Generic Enumberable to String Method to the IL Code
-                    IL.Append(GenerateBlock_EnumerableToString(maxStringLength, maxEnumerableCount) + "\r");
+                    IL.AppendLine(GenerateBlock_EnumerableToString(maxStringLength, maxEnumerableCount) + "\r");
                 }
 
                 IL.AppendLine(LinesOfCode[x]);
@@ -57,7 +60,7 @@ namespace CILWeaveProfiler.Models
             foreach (Method m in Methods)
             {
                 // Replace the Method's code block with the placeholder in the Class code
-                IL = IL.Replace("%%%" + m.MethodName + "%%%", m.GenerateMethodILCode(maxStringLength).Replace("@@@Class@@@", ClassName));
+                IL = IL.Replace("%%%" + m.MethodName + "%%%", m.GenerateMethodILCode(LoggingType, maxStringLength).Replace("@@@Class@@@", ClassName));
             }
 
             // Determine if we have a Method Override (used to handle the actual logging)

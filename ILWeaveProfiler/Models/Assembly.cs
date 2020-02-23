@@ -4,6 +4,9 @@ using System.IO;
 
 namespace CILWeaveProfiler.Models
 {
+    /// <summary>
+    /// A parsed representation of an Assembly from CIL Code
+    /// </summary>
     public class Assembly
     {
         public string AssemblyName { get; set; }

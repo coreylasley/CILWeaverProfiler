@@ -8,6 +8,6 @@ namespace CILWeaveProfiler.Attributes
     [AttributeUsage(AttributeTargets.Method)]
     public class ProfilerMethodAttribute : Attribute
     {
-        public ILWeaveLoggingTypes LoggingType { get; set; } = ILWeaveLoggingTypes.All;
+        public LoggingTypes LoggingType { get; set; } = LoggingTypes.All;
     }
 }

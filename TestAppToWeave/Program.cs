@@ -5,12 +5,13 @@ namespace TestAppToWeave
 {
 
     /****************************************************************************************************
-     * This is a test program that the ILWeaver program will apply its magic
+     * This is a test program that you can use to test CILWeaver program
      ****************************************************************************************************/
 
-    [ProfilerClass(LoggingType = CILWeaveProfiler.ILWeaveLoggingTypes.All)]
+    [ProfilerClass(LoggingType = CILWeaveProfiler.LoggingTypes.All)]
     class Program
     {
+        [ProfilerMethod(LoggingType = CILWeaveProfiler.LoggingTypes.None)]
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");

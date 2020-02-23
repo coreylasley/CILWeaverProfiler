@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using CILWeaveProfiler;
 using CILWeaveProfiler.Attributes;
 
 namespace ReferenceApp 
@@ -18,26 +19,25 @@ namespace ReferenceApp
      * 3. Run the ILWeaver program, which will disassemble this program
      ****************************************************************************************************/
 
+    [ProfilerClass(LoggingType = LoggingTypes.All)]
     class Program 
     {
-       
+        static Random r = new Random();
+
+        [ProfilerMethod(LoggingType = LoggingTypes.None)]
         static void Main(string[] args)
         {
-            SomeTestMethod(234, "This is a test", new List<DateTime> { DateTime.Now });
-
-            //Logging(234, "This is a test", false, 234, 56456, 12312, 1, 2, DateTime.Now);
+            for (int x = 0; x < 20; x++)
+            {
+                SomeTestMethod(234, "This is a test", new List<DateTime> { DateTime.Now, DateTime.Now.AddDays(r.Next(1,100)), DateTime.Now.AddDays(r.Next(1, 100)) });
+            }
         }
 
+        [ProfilerMethod(LoggingType = LoggingTypes.ParameterValuesOnly)]
         static void SomeTestMethod(int intObject, string stringObject, List<DateTime> dateTimeObject)
-        {
-            
-            string a = "Something to do (" + intObject + ")";
-            string b = " to see if this works " + stringObject;
-            string c = a + b;
-
-            //LogIt("NoLogging", "intObject=1; stringObject=TEST; dateTimeObject=12:00:00", stopwatch.ElapsedMilliseconds);
+        {            
+            System.Threading.Thread.Sleep(r.Next(1000, 5000));                      
         }
-
        
         [LoggingMethodOverride]
         static void LogIt(string methodName, string parameters, long milliseconds)

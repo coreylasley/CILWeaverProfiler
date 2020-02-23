@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29709.97
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CILWeaver", "ILWeaveLogger\CILWeaver.csproj", "{5B508C3B-9B6B-4494-8A3D-5D3A0A4AFCC9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CILWeaver.Console", "ILWeaveLogger\CILWeaver.Console.csproj", "{5B508C3B-9B6B-4494-8A3D-5D3A0A4AFCC9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReferenceApp", "ReferenceApp\ReferenceApp.csproj", "{D39DBF89-83DD-4659-B1E3-C8F74D09C66E}"
 EndProject
@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CILWeaveProfiler", "ILWeave
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestAppToWeave", "TestAppToWeave\TestAppToWeave.csproj", "{D4A5A5BB-25EC-4697-9148-771F714A3F4C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILStringify.Blazor", "ILStringify.Blazor\ILStringify.Blazor.csproj", "{F5AE5E4A-177F-4E21-9676-9C7253574D4F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILStringify.Blazor", "ILStringify.Blazor\ILStringify.Blazor.csproj", "{F5AE5E4A-177F-4E21-9676-9C7253574D4F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -4,11 +4,12 @@ using System.Text;
 
 namespace CILWeaveProfiler.Models
 {
+    /// <summary>
+    /// A parsed representation of a Method from CIL Code
+    /// </summary>
     public class Method
-    {
-       
-        public string MethodName { get; set; } = "";
-        
+    {       
+        public string MethodName { get; set; } = "";        
         public List<Parameter> Parameters { get; set; } = new List<Parameter>();
         public List<string> Labels { get; set; } = new List<string>();
         public List<string> Gotos { get; set; } = new List<string>();
@@ -16,6 +17,7 @@ namespace CILWeaveProfiler.Models
         public List<string> LinesOfCode { get; set; } = new List<string>();
         public int MaxStack { get; set; }
         public bool IsLoggingMethodOverride { get; set; }
+        public LoggingTypes? LoggingType { get; set; }
 
         public bool ContainsEnumerableParameters
         {
@@ -24,13 +26,14 @@ namespace CILWeaveProfiler.Models
                 return Parameters.Where(x => x.IsEnumerable).FirstOrDefault() != null ? true : false;
             }
         }
-        
 
         /// <summary>
         /// Returns the IL Method that has been modified for profiling
         /// </summary>
+        /// <param name="classLoggingType">The parent class logging type, which is used if the method does not have one defined</param>
+        /// <param name="maxStringLength">The maximum length of a string before truncation, specifiy 0 for no truncation</param>
         /// <returns></returns>
-        public string GenerateMethodILCode(int maxStringLength = 0)
+        public string GenerateMethodILCode(LoggingTypes? classLoggingType, int maxStringLength = 0)
         {
             StringBuilder IL = new StringBuilder();
             foreach(string line in LinesOfCode)
@@ -38,18 +41,24 @@ namespace CILWeaveProfiler.Models
                 IL.AppendLine(line);
             }
 
-            return ReplacePlaceholders(IL.ToString(), maxStringLength);
+            return ReplacePlaceholders(IL.ToString(), classLoggingType, maxStringLength);
         }
 
         /// <summary>
         /// Replaces the placeholder strings in the IL code with applicable IL code blocks
         /// </summary>
-        /// <param name="IL"></param>
-        /// <param name="methods"></param>
+        /// <param name="IL"></param>        
+        /// <param name="classLoggingType">The parent class logging type, which is used if the method does not have one defined</param>
+        /// <param name="maxStringLength">The maximum length of a string before truncation, specifiy 0 for no truncation</param>
         /// <returns>IL Code</returns>
-        private string ReplacePlaceholders(string IL, int maxStringLength = 0)
+        private string ReplacePlaceholders(string IL, LoggingTypes? classLoggingType, int maxStringLength = 0)
         {
-            IL = IL.Replace("***" + MethodName + "_LOCALS INIT***", GenerateBlock_LocalInit());
+            // Be default we are going to use the Class' logging type...
+            LoggingTypes? loggingType = classLoggingType;
+            // Unless we have a logging type specified for this Method
+            if (LoggingType != null) loggingType = LoggingType;
+            
+            IL = IL.Replace("***" + MethodName + "_LOCALS INIT***", GenerateBlock_LocalInit(loggingType));
             IL = IL.Replace("***" + MethodName + "_START***", GenerateBlock_ParameterLogging(maxStringLength));
             IL = IL.Replace("***" + MethodName + "_END***", GenerateBlock_ExecutionLogging());
             IL = IL.Replace("&&&maxstack&&&", (IsLoggingMethodOverride ? MaxStack : (Parameters.Count + 4)).ToString());
@@ -227,17 +236,28 @@ namespace CILWeaveProfiler.Models
         /// </summary>
         /// <param name="initTypes"></param>
         /// <returns>IL code</returns>
-        private string GenerateBlock_LocalInit()
+        private string GenerateBlock_LocalInit(LoggingTypes? loggingType)
         {
             string ret = ".locals init (";
 
+            int additionalInits = 0;
             if (!IsLoggingMethodOverride)
             {
-                ret += "string V_0,\nclass [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_1" + (InitTypes.Count > 0 ? "," : ")") + "\n";
+                if (loggingType == LoggingTypes.All || loggingType == LoggingTypes.ParameterValuesOnly)
+                {
+                    ret += "string V_0,\n";
+                    additionalInits++;
+                }
+
+                if (loggingType == LoggingTypes.All || loggingType == LoggingTypes.ExecutionTimeOnly)
+                {
+                    ret += "class [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_1" + (InitTypes.Count > 0 ? "," : ")") + "\n";
+                    additionalInits++;
+                }
 
                 for (int x = 0; x < InitTypes.Count; x++)
                 {
-                    ret += InitTypes[x] + " V_" + (x + 2) + (x < InitTypes.Count - 1 ? "," : ")") + "\n";
+                    ret += InitTypes[x] + " V_" + (x + additionalInits) + (x < InitTypes.Count - 1 ? "," : ")") + "\n";
                 }
             }
             else
