@@ -77,7 +77,7 @@ namespace CILWeaveProfiler.Models
 
             if (!IsLoggingMethodOverride)
             {
-                sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.s " + Parameters.Count * 2);
+                sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.s   " + Parameters.Count * 2);
                 sb.AppendLine(GenerateUniqueLabel() + "newarr     [System.Runtime]System.String");
                 sb.AppendLine(GenerateUniqueLabel() + "dup\n");
 
@@ -86,8 +86,8 @@ namespace CILWeaveProfiler.Models
                 for (int x = 0; x < Parameters.Count; x++)
                 {
                     sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + y);
-                    sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + (x == 0 ? "Logging -> " : "; ") + Parameters[x].Name + "=\"");
-                    
+                    sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + (x == 0 ? "" : "; ") + Parameters[x].Name + "=\"");
+                    sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
 
                     cliType = ToCILType(Parameters[x].Type);
                     if (cliType != "IEnumerable")
@@ -98,7 +98,14 @@ namespace CILWeaveProfiler.Models
                         sb.AppendLine(GenerateUniqueLabel() + "call       instance string " + cliType + "::ToString()");
                     }
                     else
-                    {                        
+                    {
+                        sb.AppendLine(GenerateUniqueLabel() + "dup");
+                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
+                        sb.AppendLine(GenerateUniqueLabel() + "ldarg." + x);
+                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.0");
+                        sb.AppendLine(GenerateUniqueLabel() + "call       string @@@Assembly@@@.@@@Class@@@::@@@EnumerableMethod@@@(class [System.Runtime]System.Collections.IEnumerable,");
+                        sb.AppendLine("                                                                                         bool)");
+                        /*
                         sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
                         sb.AppendLine(GenerateUniqueLabel() + "ldstr      " + Parameters[x].Name);
                         sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
@@ -108,6 +115,7 @@ namespace CILWeaveProfiler.Models
                         sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.1");
                         sb.AppendLine(GenerateUniqueLabel() + "call       string @@@Assembly@@@.@@@Class@@@::@@@EnumerableMethod@@@(class [System.Runtime]System.Collections.IEnumerable,");
                         sb.AppendLine(GenerateUniqueLabel() + "                                                                                         bool)");
+                        */
                     }
 
                     sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
@@ -195,7 +203,7 @@ namespace CILWeaveProfiler.Models
                         ret += "Char";
                         break;
                     default:
-                        if (type.Contains(""))
+                        if (type.Contains("") || type.Contains("[]"))
                             ret = "IEnumerable";
                         else if (type.StartsWith("valuetype "))
                             ret = ret.Replace("valuetype ", "");
@@ -268,7 +276,7 @@ namespace CILWeaveProfiler.Models
                 }
             }
 
-            return ret;
+            return ret == ".locals init (" ? "" : ret;
         }
 
         /// <summary>

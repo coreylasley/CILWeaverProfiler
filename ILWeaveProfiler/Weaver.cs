@@ -268,12 +268,8 @@ namespace CILWeaveProfiler
 
                     if (inInit && l.Contains("V_"))
                     {
-                        string[] initLineParts = l.Split(' ');
-                        if (initLineParts.Length >= 2)
-                        {
-                            currentMethod.InitTypes.Add(initLineParts[initLineParts.Length - 2].Replace("(",""));
-                        }
-
+                        string i = GetInitType(l);
+                        currentMethod.InitTypes.Add(i);
                         includeLine = false;
                     }
 
@@ -356,6 +352,17 @@ namespace CILWeaveProfiler
             }
             
             return assembly;
+        }
+
+        private string GetInitType(string line)
+        {
+            string ret = "";
+            line = line.Replace(".locals init (", "").Trim();
+            string[] parts = line.Split(' ');
+            for (int x = 0; x < parts.Count() - 1; x++)
+                ret += parts[x] + " ";
+
+            return ret.Trim();
         }
 
         private LoggingTypes? GetLoggingType(string line)

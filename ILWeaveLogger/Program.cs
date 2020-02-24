@@ -23,10 +23,17 @@ namespace ILWeaver
             // Parse the disassembled IL Code
             Assembly asm = w.ParseILCode(IL);
 
-            //Console.WriteLine(IL);
+            Console.WriteLine(IL);
+
+            Console.WriteLine("\r\r**************************************************************************\r\r");
+
+            IL = asm.GenerateAssemblyILCode();
 
             // Display the modified IL Code
-            Console.WriteLine(asm.GenerateAssemblyILCode());                        
+            Console.WriteLine(IL);
+
+            
+            w.Assemble(IL, @"C:\git\PoorMansLogger.ILWeaver\ReferenceApp\bin\Debug\netcoreapp3.1\ReferenceApp2.dll");
         }
 
 

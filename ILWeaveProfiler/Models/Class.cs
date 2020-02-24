@@ -30,6 +30,8 @@ namespace CILWeaveProfiler.Models
         {
             StringBuilder IL = new StringBuilder();
 
+            bool includedOverrideMethod = false;
+
             // Determine if we have a Method Override (used to handle the actual logging)
             Method methodOverride = Methods.Where(x => x.IsLoggingMethodOverride).FirstOrDefault();
 

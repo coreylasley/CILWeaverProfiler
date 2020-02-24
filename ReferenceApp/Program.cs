@@ -27,97 +27,111 @@ namespace ReferenceApp
         [ProfilerMethod(LoggingType = LoggingTypes.None)]
         static void Main(string[] args)
         {
+            string[] strs = ("this is a test").Split(' ');
             for (int x = 0; x < 20; x++)
             {
-                SomeTestMethod(234, "This is a test", new List<DateTime> { DateTime.Now, DateTime.Now.AddDays(r.Next(1,100)), DateTime.Now.AddDays(r.Next(1, 100)) });
+                //SomeTestMethod(234, "This is a test", new List<DateTime> { DateTime.Now, DateTime.Now.AddDays(r.Next(1,100)), DateTime.Now.AddDays(r.Next(1, 100)) }, strs);
             }
         }
 
-        [ProfilerMethod(LoggingType = LoggingTypes.ParameterValuesOnly)]
-        static void SomeTestMethod(int intObject, string stringObject, List<DateTime> dateTimeObject)
-        {            
-            System.Threading.Thread.Sleep(r.Next(1000, 5000));                      
+        [ProfilerMethod(LoggingType = LoggingTypes.All)]
+        static void TestMethod(string str, int number, decimal[] decArray, IEnumerable<string> enumString)
+        {
+            string retObj = "str = " + str.ToString() + 
+                ", number = " + number.ToString() +
+                ", decArray = " + Get___Enumerable___AsListString___(decArray, false) +
+                ", enumString = " + Get___Enumerable___AsListString___(enumString, false);
+
         }
-       
+
         [LoggingMethodOverride]
         static void LogIt(string methodName, string parameters, long milliseconds)
         {
             Console.WriteLine("LOGGING -> " + methodName + "(" + parameters + ") executed in: " + milliseconds);
         }
 
+        /*
+        static void SomeTestMethod(int intObject, string stringObject, List<DateTime> dateTimeObject, string[] strs)
+        {
+            Get___Enumerable___AsListString___(strs, false);
+            System.Threading.Thread.Sleep(r.Next(1000, 5000));                      
+        }
+       
+       
+        */
 
         /*
-       static void LoggingPrimitives(int intObject, string stringObject, bool boolObject, float floatObject, long longObject, double doubleObject, short shortObject, uint uintObject,  DateTime dateTimeObject)
-       {
-           string parameters = "Logging -> " + "intObject=" + intObject.ToString()
-               + "; stringObject=" + stringObject.ToString()
-               + "; dateTimeObject=" + dateTimeObject.ToString()
-               + "; boolObject=" + boolObject.ToString()
-               + "; floatObject=" + floatObject.ToString()
-               + "; longObject=" + longObject.ToString()
-               + "; doubleObject=" + doubleObject.ToString()
-               + "; shortObject=" + shortObject.ToString()
-               + "; uintObject=" + uintObject.ToString();
-           ;
+        static void LoggingPrimitives(int intObject, string stringObject, bool boolObject, float floatObject, long longObject, double doubleObject, short shortObject, uint uintObject,  DateTime dateTimeObject)
+        {
+            string parameters = "Logging -> " + "intObject=" + intObject.ToString()
+                + "; stringObject=" + stringObject.ToString()
+                + "; dateTimeObject=" + dateTimeObject.ToString()
+                + "; boolObject=" + boolObject.ToString()
+                + "; floatObject=" + floatObject.ToString()
+                + "; longObject=" + longObject.ToString()
+                + "; doubleObject=" + doubleObject.ToString()
+                + "; shortObject=" + shortObject.ToString()
+                + "; uintObject=" + uintObject.ToString();
+            ;
 
-           string a = "Something to do (" + intObject + ")";
-           string b = " to see if this works " + stringObject;
-           string c = a + b;
+            string a = "Something to do (" + intObject + ")";
+            string b = " to see if this works " + stringObject;
+            string c = a + b;
 
-       }
+        }
 
-       static void LoggingEnumerables(IEnumerable<int> intObject, 
-           IEnumerable<string> stringObject, 
-           IEnumerable<bool> boolObject,
-           IEnumerable<float> floatObject,
-           IEnumerable<long> longObject,
-           IEnumerable<double> doubleObject,
-           IEnumerable<short> shortObject,
-           IEnumerable<uint> uintObject,
-           IEnumerable<DateTime> dateTimeObject)
-       {
+        static void LoggingEnumerables(IEnumerable<int> intObject, 
+            IEnumerable<string> stringObject, 
+            IEnumerable<bool> boolObject,
+            IEnumerable<float> floatObject,
+            IEnumerable<long> longObject,
+            IEnumerable<double> doubleObject,
+            IEnumerable<short> shortObject,
+            IEnumerable<uint> uintObject,
+            IEnumerable<DateTime> dateTimeObject)
+        {
 
-           string parameters = "Logging -> " + "intObject=" + intObject.ToString()
-               + "; stringObject=" + Get___Enumerable___AsListString___(stringObject, false)
-               + "; dateTimeObject=" + dateTimeObject.ToString()
-               + "; boolObject=" + boolObject.ToString()
-               + "; floatObject=" + floatObject.ToString()
-               + "; longObject=" + longObject.ToString()
-               + "; doubleObject=" + doubleObject.ToString()
-               + "; shortObject=" + shortObject.ToString()
-               + "; uintObject=" + uintObject.ToString();
-           ;
+            string parameters = "Logging -> " + "intObject=" + intObject.ToString()
+                + "; stringObject=" + Get___Enumerable___AsListString___(stringObject, false)
+                + "; dateTimeObject=" + dateTimeObject.ToString()
+                + "; boolObject=" + boolObject.ToString()
+                + "; floatObject=" + floatObject.ToString()
+                + "; longObject=" + longObject.ToString()
+                + "; doubleObject=" + doubleObject.ToString()
+                + "; shortObject=" + shortObject.ToString()
+                + "; uintObject=" + uintObject.ToString();
+            ;
 
-           string a = "Something to do (" + intObject + ")";
-           string b = " to see if this works " + stringObject;
-           string c = a + b;
+            string a = "Something to do (" + intObject + ")";
+            string b = " to see if this works " + stringObject;
+            string c = a + b;
 
-       }
+        }
 
-       static void LoggingCollections(ArrayList intObject,
-   BitArray stringObject,
-   Hashtable doubleObject,
-   Queue shortObject,
-   SortedList uintObject,
-   Stack dateTimeObject)
-       {
+        static void LoggingCollections(ArrayList intObject,
+    BitArray stringObject,
+    Hashtable doubleObject,
+    Queue shortObject,
+    SortedList uintObject,
+    Stack dateTimeObject)
+        {
 
-           string parameters = "Logging -> " + "intObject=" + Get___Enumerable___AsListString___(intObject, true)
-               + "; stringObject=" + Get___Enumerable___AsListString___(stringObject, true)
-               + "; dateTimeObject=" + Get___Enumerable___AsListString___(dateTimeObject, true)
-               + "; doubleObject=" + Get___Enumerable___AsListString___(doubleObject, true)
-               + "; shortObject=" + Get___Enumerable___AsListString___(shortObject, true)
-               + "; uintObject=" + Get___Enumerable___AsListString___(uintObject, true);
-           ;
+            string parameters = "Logging -> " + "intObject=" + Get___Enumerable___AsListString___(intObject, true)
+                + "; stringObject=" + Get___Enumerable___AsListString___(stringObject, true)
+                + "; dateTimeObject=" + Get___Enumerable___AsListString___(dateTimeObject, true)
+                + "; doubleObject=" + Get___Enumerable___AsListString___(doubleObject, true)
+                + "; shortObject=" + Get___Enumerable___AsListString___(shortObject, true)
+                + "; uintObject=" + Get___Enumerable___AsListString___(uintObject, true);
+            ;
 
-           string a = "Something to do (" + intObject + ")";
-           string b = " to see if this works " + stringObject;
-           string c = a + b;
+            string a = "Something to do (" + intObject + ")";
+            string b = " to see if this works " + stringObject;
+            string c = a + b;
 
-       }
+        }
 
-
-       private static string Get___Enumerable___AsListString___(IEnumerable enumerable, bool isNumeric)
+         
+        private static string Get___Enumerable___AsListString___(IEnumerable enumerable, bool isNumeric)
        {
            StringBuilder ret = new StringBuilder();
 
