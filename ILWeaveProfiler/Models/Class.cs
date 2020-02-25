@@ -18,9 +18,25 @@ namespace CILWeaveProfiler.Models
         }
 
         public string ClassName { get; set; }
+
+        /// <summary>
+        /// Methods in the Class that are applicable to modification
+        /// </summary>
         public List<Method> Methods { get; set; } = new List<Method>();
+
+        /// <summary>
+        /// Each line of code in the Class, placeholders will exist instead of applicable-to-modification Methods
+        /// </summary>
         public List<string> LinesOfCode { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Based on the Attribute
+        /// </summary>
         public LoggingTypes? LoggingType { get; set; }
+
+        /// <summary>
+        /// Are the methods contained in our class Non-Static, Static, Both, or None
+        /// </summary>
         public EnumerableParamMethodTypes ContainsMethodsWithEnumerableParameters
         {
             get
@@ -42,6 +58,10 @@ namespace CILWeaveProfiler.Models
                 return ret;
             }
         }
+
+        /// <summary>
+        /// What we want to call our method that is used to turn an enumerable type into a string list 
+        /// </summary>
         public string EnumerableToStringMethodName = "Get___Enumerable___AsListString___";
 
         /// <summary>
@@ -51,29 +71,29 @@ namespace CILWeaveProfiler.Models
         public string GenerateClassILCode(int maxStringLength = 0, int maxEnumerableCount = 0)
         {
             StringBuilder IL = new StringBuilder();
-
-            bool includedOverrideMethod = false;
-
+                        
             // Determine if we have a Method Override (used to handle the actual logging)
             Method methodOverride = Methods.Where(x => x.IsLoggingMethodOverride).FirstOrDefault();
 
             for (int x = 0; x < LinesOfCode.Count; x++)
             {
-                // If the next line is the end of the Class code, and we have Methods that have IEnumerable parameters...
+                // If the next line is the end of the Class code, 
+                // and we have Methods that have IEnumerable parameters,
+                // and we have a method override defined...
                 if (x + 1 == LinesOfCode.Count && ContainsMethodsWithEnumerableParameters != EnumerableParamMethodTypes.None && methodOverride != null)
                 {
                     switch (ContainsMethodsWithEnumerableParameters)
                     {
                         case EnumerableParamMethodTypes.NonStatic:
-                            // Generate and append the Generic Enumberable to String Method to the IL Code
+                            // Generate and append the non-static Generic Enumberable to String Method to the IL Code
                             IL.AppendLine(GenerateBlock_EnumerableToString(false, maxStringLength, maxEnumerableCount) + "\r");
                             break;
                         case EnumerableParamMethodTypes.Static:
-                            // Generate and append the Generic Enumberable to String Method to the IL Code
+                            // Generate and append the static Generic Enumberable to String Method to the IL Code
                             IL.AppendLine(GenerateBlock_EnumerableToString(true, maxStringLength, maxEnumerableCount) + "\r");
                             break;
                         case EnumerableParamMethodTypes.Both:
-                            // Generate and append the Generic Enumberable to String Method to the IL Code
+                            // Generate and append the both non-static and static Generic Enumberable to String Methods to the IL Code
                             IL.AppendLine(GenerateBlock_EnumerableToString(false, maxStringLength, maxEnumerableCount) + "\r");
                             IL.AppendLine(GenerateBlock_EnumerableToString(true, maxStringLength, maxEnumerableCount) + "\r");
                             break;
@@ -83,6 +103,7 @@ namespace CILWeaveProfiler.Models
                 IL.AppendLine(LinesOfCode[x]);
             }
 
+            // Replace Method placeholder string with actual Method code blocks
             return ReplacePlaceholders(IL.ToString());
         }
 
@@ -97,18 +118,22 @@ namespace CILWeaveProfiler.Models
             // Loop through each Method in our Class
             foreach (Method m in Methods)
             {
+                // By default we will use the Class' logging attribute 
                 LoggingTypes? lt = LoggingType;
+                // If the Method has a logging attribute, use this one instead
                 if (m.LoggingType != null) lt = m.LoggingType;
+                // If this method is the Method Override, we do not want to add logging to this (since this is the method that handels the logging!)
                 if (m.IsLoggingMethodOverride) lt = LoggingTypes.None;
 
                 // Replace the Method's code block with the placeholder in the Class code
                 IL = IL.Replace("%%%" + m.MethodName + "%%%", m.GenerateMethodILCode(lt, maxStringLength).Replace("@@@Class@@@", ClassName));
             }
 
-            // Determine if we have a Method Override (used to handle the actual logging)
+            // Grab the Method Override (used to handle the actual logging), if one exists
             Method methodOverride = Methods.Where(x => x.IsLoggingMethodOverride).FirstOrDefault();
             if (methodOverride != null)
-            {                
+            {   
+                // Replace the Method Override codeblock with the placeholder in the Class code, as well as the Enumerable Method name with coinciding placeholder(s)
                 IL = IL.Replace("@@@MethodOverride@@@", methodOverride.MethodName).Replace("@@@EnumerableMethod@@@", EnumerableToStringMethodName);
             }
             
@@ -159,7 +184,7 @@ namespace CILWeaveProfiler.Models
          */
 
         private string GenerateBlock_EnumerableToString(bool isStatic, int maxStringLength = 0, int maxEnumerableCount = 0)
-        {
+        {            
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("  .method private hidebysig " + (isStatic ? "static" : "instance") +  " string");
             sb.AppendLine("          " + EnumerableToStringMethodName + (isStatic ? "static" : "") + "<T>(class [System.Runtime]System.Collections.Generic.IEnumerable`1<!!T> enumerable,");

@@ -9,17 +9,56 @@ namespace CILWeaveProfiler.Models
     /// </summary>
     public class Method
     {       
-        public string MethodName { get; set; } = "";        
+        public string MethodName { get; set; } = "";     
+        
+        /// <summary>
+        /// The Method's Parameters
+        /// </summary>
         public List<Parameter> Parameters { get; set; } = new List<Parameter>();
+
+        /// <summary>
+        /// Labels used
+        /// </summary>
         public List<string> Labels { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Labels that are referenced (i.e. gotos)
+        /// </summary>
         public List<string> Gotos { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Items defined in the Init block of the Method
+        /// </summary>
         public List<string> InitTypes { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Lines of code in the method, including placeholder values
+        /// </summary>
         public List<string> LinesOfCode { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Is this method a static method?
+        /// </summary>
         public bool IsStatic { get; set; }
+
+        /// <summary>
+        /// The maxstack value
+        /// </summary>
         public int MaxStack { get; set; }
+
+        /// <summary>
+        /// Is this the method that will be used to handel logging in the .NET code?
+        /// </summary>
         public bool IsLoggingMethodOverride { get; set; }
+
+        /// <summary>
+        /// The logging type (if any) for this method. Note, if null, the parent Class' logging type will be applied
+        /// </summary>
         public LoggingTypes? LoggingType { get; set; }
 
+        /// <summary>
+        /// Does this Method contain at least one Parameter that implements IEnumerable?
+        /// </summary>
         public bool ContainsEnumerableParameters
         {
             get
@@ -61,7 +100,7 @@ namespace CILWeaveProfiler.Models
             
             IL = IL.Replace("***" + MethodName + "_LOCALS INIT***", GenerateBlock_LocalInit(loggingType));
             IL = IL.Replace("***" + MethodName + "_START***", GenerateBlock_ParameterLogging(maxStringLength));
-            IL = IL.Replace("***" + MethodName + "_END***", GenerateBlock_ExecutionLogging());
+            IL = IL.Replace("***" + MethodName + "_END***", GenerateBlock_ExecutionLogging(loggingType));
             IL = IL.Replace("&&&maxstack&&&", (IsLoggingMethodOverride ? MaxStack : (Parameters.Count + 4)).ToString());
 
             return IL;
@@ -76,6 +115,7 @@ namespace CILWeaveProfiler.Models
         {
             StringBuilder sb = new StringBuilder();
 
+            // Don't add any additional code if we are in the Method Override (because it wont be used)
             if (!IsLoggingMethodOverride)
             {
                 sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.s   " + Parameters.Count * 2);
@@ -106,17 +146,6 @@ namespace CILWeaveProfiler.Models
                         sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.0");
                         sb.AppendLine(GenerateUniqueLabel() + "call       string @@@Assembly@@@.@@@Class@@@::@@@EnumerableMethod@@@" + (IsStatic ? "static" : "") + "(class [System.Runtime]System.Collections.IEnumerable,");
                         sb.AppendLine("                                                                                         bool)");
-                        /*
-                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
-                        sb.AppendLine(GenerateUniqueLabel() + "ldstr      " + Parameters[x].Name);
-                        sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
-                        sb.AppendLine(GenerateUniqueLabel() + "dup");
-                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.3");
-                        sb.AppendLine(GenerateUniqueLabel() + "ldarg.1");
-                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.1");
-                        sb.AppendLine(GenerateUniqueLabel() + "call       string @@@Assembly@@@.@@@Class@@@::@@@EnumerableMethod@@@(class [System.Runtime]System.Collections.IEnumerable,");
-                        sb.AppendLine(GenerateUniqueLabel() + "                                                                                         bool)");
-                        */
                     }
 
                     sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
@@ -204,7 +233,7 @@ namespace CILWeaveProfiler.Models
                         ret += "Char";
                         break;
                     default:
-                        if (type.Contains("") || type.Contains("[]"))
+                        if (type.Contains("Collections") || type.Contains("[]")) 
                             ret = "IEnumerable";
                         else if (type.StartsWith("valuetype "))
                             ret = ret.Replace("valuetype ", "");
@@ -217,7 +246,11 @@ namespace CILWeaveProfiler.Models
             return ret;
         }
 
-        private string GenerateBlock_ExecutionLogging()
+        /// <summary>
+        /// Generates the IL Code to call the defined Method Override which is actually defined in our .NET code passing in (string methodName, string parameters, long milliseconds)
+        /// </summary>
+        /// <returns></returns>
+        private string GenerateBlock_ExecutionLogging(LoggingTypes? loggingType)
         {
             StringBuilder sb = new StringBuilder();
             
@@ -283,7 +316,7 @@ namespace CILWeaveProfiler.Models
         /// <summary>
         /// Generate a new Label value that is unique to the existing list (and adds the new value to the list)
         /// </summary>
-        /// <param name="existingLabels"></param>
+        /// <param name="includeColonAndPadding">Will also include a colon and standard padding after the label name</param>
         /// <returns></returns>
         private string GenerateUniqueLabel(bool includeColonAndPadding = true)
         {

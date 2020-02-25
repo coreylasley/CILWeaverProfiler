@@ -257,7 +257,6 @@ namespace CILWeaveProfiler
                         currentMethod.MaxStack = Convert.ToInt32(ms[ms.Length - 1]);
                         includeLine = false;
                         currentMethod.LinesOfCode.Add("    .maxstack  &&&maxstack&&&");
-
                     }
 
                     if (l.Contains(".locals init"))
@@ -366,8 +365,15 @@ namespace CILWeaveProfiler
             return ret.Trim();
         }
 
+        /// <summary>
+        /// Gets the Logging Type defined in the Profiler Attribute
+        /// </summary>
+        /// <param name="line"></param>
+        /// <returns></returns>
         private LoggingTypes? GetLoggingType(string line)
         {
+            // Pretty cryptic :P
+
             LoggingTypes? ret = null;
 
             if (line.EndsWith("// ggingType...."))
