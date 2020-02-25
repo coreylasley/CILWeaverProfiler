@@ -172,13 +172,13 @@ namespace CILWeaveProfiler.Models
             sb.AppendLine("      IL_008c:  call       string [System.Runtime]System.String::Concat(string,");
             sb.AppendLine("                                                                        string)");
             sb.AppendLine("      IL_0091:  stloc.s    V_4");
-            sb.AppendLine("      IL_0093:  ldstr      \"\\\"");
+            sb.AppendLine("      IL_0093:  ldstr      \"\\\"\"");
             sb.AppendLine("      IL_0098:  ldloc.s    V_4");
-            sb.AppendLine("      IL_009a:  ldstr      \"\\\"");
-            sb.AppendLine("      IL_009f:  ldstr      \"\\\\\\\"");
+            sb.AppendLine("      IL_009a:  ldstr      \"\\\"\"");
+            sb.AppendLine("      IL_009f:  ldstr      \"\\\\\\\"\"");
             sb.AppendLine("      IL_00a4:  callvirt   instance string [System.Runtime]System.String::Replace(string,");
             sb.AppendLine("                                                                                  string)");
-            sb.AppendLine("      IL_00a9:  ldstr      \"\\\"");
+            sb.AppendLine("      IL_00a9:  ldstr      \"\\\"\"");
             sb.AppendLine("      IL_00ae:  call       string [System.Runtime]System.String::Concat(string,");
             sb.AppendLine("                                                                        string,");
             sb.AppendLine("                                                                        string)");
