@@ -37,10 +37,17 @@ namespace ReferenceApp
         [ProfilerMethod(LoggingType = LoggingTypes.All)]
         static void TestMethod(string str, int number, decimal[] decArray, IEnumerable<string> enumString)
         {
-            string retObj = "str = " + str.ToString() + 
-                ", number = " + number.ToString() +
-                ", decArray = " + Get___Enumerable___AsListString___(decArray, false) +
-                ", enumString = " + Get___Enumerable___AsListString___(enumString, false);
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+
+        }
+
+        [ProfilerMethod(LoggingType = LoggingTypes.All)]
+        static void TestMethod2(string str, int number, decimal[] decArray, IEnumerable<string> enumString)
+        {
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            string parameters = "str = " + str + ", number = " + number;
 
         }
 
@@ -50,44 +57,27 @@ namespace ReferenceApp
             Console.WriteLine("LOGGING -> " + methodName + "(" + parameters + ") executed in: " + milliseconds);
         }
 
-        [ProfilerMethod(LoggingType = LoggingTypes.None)]
-        private static string Get___Enumerable___AsListString___(IEnumerable enumerable, bool isNumeric)
+        static void LoggingPrimitives(int intObject, string stringObject, bool boolObject, float floatObject, long longObject, double doubleObject, short shortObject, uint uintObject, DateTime dateTimeObject)
         {
-            StringBuilder ret = new StringBuilder();
+            Stopwatch stopwatch = Stopwatch.StartNew();
 
-            int x = 0;
-            int maxCount = 10;
-            int maxStringSize = 100;
-            string item;
+            string parameters = "Logging -> " + "intObject=" + intObject.ToString()
+                + "; stringObject=" + stringObject.ToString()
+                + "; dateTimeObject=" + dateTimeObject.ToString()
+                + "; boolObject=" + boolObject.ToString()
+                + "; floatObject=" + floatObject.ToString()
+                + "; longObject=" + longObject.ToString()
+                + "; doubleObject=" + doubleObject.ToString()
+                + "; shortObject=" + shortObject.ToString()
+                + "; uintObject=" + uintObject.ToString();
+            ;
 
-            ret.Append("[");
-            foreach (var i in enumerable)
-            {
-                x++;
-                if (x > 0) ret.Append(", ");
+            string a = "Something to do (" + intObject + ")";
+            string b = " to see if this works " + stringObject;
+            string c = a + b;
 
-                item = i.ToString();
-
-                if (!isNumeric)
-                {
-                    if (item.Length > maxStringSize && maxStringSize > 0)
-                        item = item.Substring(0, maxStringSize) + " ... ";
-
-                    item = "\"" + item.Replace("\"", "\\\"") + "\"";
-                }
-
-                ret.Append(item);
-
-                if (x == maxCount && maxCount > 0)
-                {
-                    ret.Append(", ...");
-                    break;
-                }
-            }
-            ret.Append("]");
-
-            return ret.ToString();
         }
+
 
         /*
         static void SomeTestMethod(int intObject, string stringObject, List<DateTime> dateTimeObject, string[] strs)

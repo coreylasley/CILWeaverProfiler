@@ -99,7 +99,7 @@ namespace CILWeaveProfiler.Models
             if (LoggingType != null) loggingType = LoggingType;
             
             IL = IL.Replace("***" + MethodName + "_LOCALS INIT***", GenerateBlock_LocalInit(loggingType));
-            IL = IL.Replace("***" + MethodName + "_START***", GenerateBlock_ParameterLogging(maxStringLength));
+            IL = IL.Replace("***" + MethodName + "_START***", GenerateBlock_ParameterLogging(loggingType, maxStringLength));
             IL = IL.Replace("***" + MethodName + "_END***", GenerateBlock_ExecutionLogging(loggingType));
             IL = IL.Replace("&&&maxstack&&&", (IsLoggingMethodOverride ? MaxStack : (Parameters.Count + 4)).ToString());
 
@@ -111,47 +111,67 @@ namespace CILWeaveProfiler.Models
         /// </summary>
         /// <param name="maxStringLength">The max length of string values before truncation, 0 means no limit</param>
         /// <returns>IL code</returns>
-        private string GenerateBlock_ParameterLogging(int maxStringLength = 0)
+        private string GenerateBlock_ParameterLogging(LoggingTypes? loggingType, int maxStringLength = 0)
         {
             StringBuilder sb = new StringBuilder();
+
+            if (loggingType == null) loggingType = LoggingTypes.None;
 
             // Don't add any additional code if we are in the Method Override (because it wont be used)
             if (!IsLoggingMethodOverride)
             {
-                sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.s   " + Parameters.Count * 2);
-                sb.AppendLine(GenerateUniqueLabel() + "newarr     [System.Runtime]System.String");
-                sb.AppendLine(GenerateUniqueLabel() + "dup\n");
-
-                int y = 0;
-                string cliType = "";
-                for (int x = 0; x < Parameters.Count; x++)
+                if (LoggingType == LoggingTypes.All || LoggingType == LoggingTypes.ParameterValuesOnly)
                 {
-                    sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + y);
-                    sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + (x == 0 ? "" : "; ") + Parameters[x].Name + "=\"");
-                    sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
-
-                    cliType = ToCILType(Parameters[x].Type);
-                    if (cliType != "IEnumerable")
-                    {
-                        sb.AppendLine(GenerateUniqueLabel() + "dup");
-                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
-                        sb.AppendLine(GenerateUniqueLabel() + "ldarga.s   " + Parameters[x].Name);
-                        sb.AppendLine(GenerateUniqueLabel() + "call       instance string " + cliType + "::ToString()");
-                    }
-                    else
-                    {
-                        sb.AppendLine(GenerateUniqueLabel() + "dup");
-                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
-                        sb.AppendLine(GenerateUniqueLabel() + "ldarg." + x);
-                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.0");
-                        sb.AppendLine(GenerateUniqueLabel() + "call       string @@@Assembly@@@.@@@Class@@@::@@@EnumerableMethod@@@" + (IsStatic ? "static" : "") + "(class [System.Runtime]System.Collections.IEnumerable,");
-                        sb.AppendLine("                                                                                         bool)");
-                    }
-
-                    sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
+                    sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.s   " + Parameters.Count * 2);
+                    sb.AppendLine(GenerateUniqueLabel() + "newarr     [System.Runtime]System.String");
                     sb.AppendLine(GenerateUniqueLabel() + "dup\n");
 
-                    y += 2;
+                    int y = 0;
+                    string cliType = "";
+
+                    /* The ldc.i4. instruction can go from ldc.i4.0 to ldc.i4.8
+                     * after that, if we need to push more items onto the stack we need
+                     * to start using the ldc.i4.s  X instruction (where X is the number)
+                     */
+
+                    for (int x = 0; x < Parameters.Count; x++)
+                    {
+                        int y2 = y + 1;
+                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y >= 9 ? "s   " + y : y.ToString()));
+                        sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + (x == 0 ? "" : "; ") + Parameters[x].Name + "=\"");
+                        sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
+
+                        cliType = ToCILType(Parameters[x].Type);
+                        if (cliType != "IEnumerable")
+                        {
+                            sb.AppendLine(GenerateUniqueLabel() + "dup");
+
+                            sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y2 >= 9 ? "s   " + y2.ToString() : y2.ToString()));
+
+                            sb.AppendLine(GenerateUniqueLabel() + "ldarga.s   " + Parameters[x].Name);
+                            sb.AppendLine(GenerateUniqueLabel() + "call       instance string " + cliType + "::ToString()");
+                        }
+                        else
+                        {
+                            sb.AppendLine(GenerateUniqueLabel() + "dup");
+                            sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y2 >= 9 ? "s   " + y2.ToString() : y2.ToString()));
+                            sb.AppendLine(GenerateUniqueLabel() + "ldarg." + x);
+                            sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.0");
+                            sb.AppendLine(GenerateUniqueLabel() + "call       string @@@Assembly@@@.@@@Class@@@::@@@EnumerableMethod@@@" + (IsStatic ? "static" : "") + "(class [System.Runtime]System.Collections.IEnumerable,");
+                            sb.AppendLine("                                                                                         bool)");
+                        }
+
+                        sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
+                        sb.AppendLine(GenerateUniqueLabel() + "dup\n");
+
+                        y += 2;
+                    }
+                }
+
+                if (LoggingType == LoggingTypes.All || LoggingType == LoggingTypes.ExecutionTimeOnly)
+                {
+                    sb.AppendLine(GenerateUniqueLabel() + "call       class [System.Runtime.Extensions]System.Diagnostics.Stopwatch [System.Runtime.Extensions]System.Diagnostics.Stopwatch::StartNew()");
+                    sb.AppendLine(GenerateUniqueLabel() + "stloc.0");
                 }
             }
 
@@ -253,7 +273,9 @@ namespace CILWeaveProfiler.Models
         private string GenerateBlock_ExecutionLogging(LoggingTypes? loggingType)
         {
             StringBuilder sb = new StringBuilder();
-            
+
+            if (loggingType == null) loggingType = LoggingTypes.None;
+
             // We REALLY don't want to do this if this is the logging method override, as this will cause infinite recursion in the re-assembled app :-O
             if (!IsLoggingMethodOverride)
             {
@@ -281,6 +303,8 @@ namespace CILWeaveProfiler.Models
         private string GenerateBlock_LocalInit(LoggingTypes? loggingType)
         {
             string ret = ".locals init (";
+
+            if (loggingType == null) loggingType = LoggingTypes.None;
 
             int additionalInits = 0;
             if (!IsLoggingMethodOverride)
