@@ -6,10 +6,20 @@
     Paste your IL code and then click the "Stringify It!" button.</p>
 
 <br />
-IL Code<br />
+IL Code:<br />
 <textarea rows="25" cols="100" @bind="ilcode"></textarea>
 <br />
-
+String Concatination Type:<br />
+<select @bind="@stringifyType">
+    <option value="@StringifyTypes.ConcatSingle">Single Concat</option>
+    <option value="@StringifyTypes.ConcatLines">Multiple Concat</option>
+    <option value="@StringifyTypes.StringBuilderLines">String Builder</option>
+</select>
+<br />
+String Variable Name:<br />
+<input type="text" @bind="variable" />
+<br />
+<br />
 <button class="btn btn-primary" @onclick="StringifyIt">Stringify It!</button>
 
 <br /><br />
@@ -18,26 +28,88 @@ Stringified C# Code<br />
 
 @code {
 
+    private enum StringifyTypes
+    {
+        ConcatSingle,
+        ConcatLines,
+        StringBuilderLines
+    }
+
     private string ilcode;
     private string stringifiedcode;
+    private string variable = "ret";
+    private StringifyTypes stringifyType = StringifyTypes.StringBuilderLines;
 
     private System.Text.StringBuilder ret = new System.Text.StringBuilder();
 
     private void StringifyIt()
     {
         if (ilcode != null && ilcode.Trim() != "")
-        {
-            string[] lines = ilcode.Split('\n');
-            ret.AppendLine("StringBuilder sb = new StringBuilder();");
-            foreach (string l in lines)
-            {
-                ret.AppendLine("sb.AppendLine(\"" + l.Replace("\"", "\\\"") + "\");");
-            }
-
-            stringifiedcode = ret.ToString();
+        {            
+            stringifiedcode = Stringify(ilcode, variable, stringifyType);
         }
         else
             stringifiedcode = "You need to give me some IL Code to work with!";
 
+    }
+
+    /// <summary>
+    /// Turns text/code into string assignment code, and properly deals with double-quotes in the text
+    /// </summary>
+    /// <param name="code">The code to be wrapped in a string assignment</param>
+    /// <param name="variableName">the name of the string variable</param>
+    /// <param name="type"></param>
+    /// <returns></returns>
+    private string Stringify(string code, string variableName, StringifyTypes type)
+    {
+        string[] lines = code.Split('\n');
+        System.Text.StringBuilder ret = new System.Text.StringBuilder();
+
+        string ntext = "";
+        ret.AppendLine((type == StringifyTypes.StringBuilderLines ? "StringBuilder " + variableName + " = new StringBuilder();" : "string " + variableName + " = \"\";") + "\r\n");
+
+        for (int x = 0; x < lines.Length; x++)
+        {
+            ntext = "";
+            switch (type)
+            {
+                case StringifyTypes.StringBuilderLines:
+                    ntext = variableName + ".AppendLine(\"";
+                    break;
+                case StringifyTypes.ConcatLines:
+                    ntext = variableName + " += \"";
+                    break;
+                case StringifyTypes.ConcatSingle:
+                    ntext = x == 0 ? variableName + " = \"" : " + \"";
+                    break;
+            }
+
+            foreach (char c in lines[x])
+            {
+                if (c == '\"')
+                    ntext += @"\" + "\"";
+                else if (c == '\\')
+                    ntext += @"\\";
+                else
+                    ntext += c;
+            }
+
+            switch(type)
+            {
+                case StringifyTypes.StringBuilderLines:
+                    ntext += "\");";
+                    break;
+                case StringifyTypes.ConcatLines:
+                    ntext += "\";";
+                    break;
+                case StringifyTypes.ConcatSingle:
+                    ntext += "\\r\\n\"" + (x == lines.Length - 1 ? ";" : "");
+                    break;
+            }
+
+            ret.AppendLine(ntext);
+        }
+
+        return ret.ToString();
     }
 }
