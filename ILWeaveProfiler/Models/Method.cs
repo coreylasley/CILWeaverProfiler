@@ -17,19 +17,19 @@ namespace CILWeaveProfiler.Models
         public List<Parameter> Parameters { get; set; } = new List<Parameter>();
 
         /// <summary>
-        /// Labels used
+        /// Labels used. i.e. IL_0000 ...
         /// </summary>
         public List<string> Labels { get; set; } = new List<string>();
 
         /// <summary>
-        /// Labels that are referenced (i.e. gotos)
+        /// Labels that are referenced (basically GOTOs)
         /// </summary>
-        public List<string> Gotos { get; set; } = new List<string>();
+        public List<string> LabelsReferenced { get; set; } = new List<string>();
 
         /// <summary>
-        /// Items defined in the Init block of the Method
+        /// Items defined in the ".locals init" block of the Method
         /// </summary>
-        public List<string> InitTypes { get; set; } = new List<string>();
+        public List<string> LocalsInitTypes { get; set; } = new List<string>();
 
         /// <summary>
         /// Lines of code in the method, including placeholder values
@@ -42,12 +42,12 @@ namespace CILWeaveProfiler.Models
         public bool IsStatic { get; set; }
 
         /// <summary>
-        /// The maxstack value
+        /// The initial maxstack value after disassembly
         /// </summary>
         public int MaxStack { get; set; }
 
         /// <summary>
-        /// Is this the method that will be used to handel logging in the .NET code?
+        /// Is this the method that will be used to handle logging in the .NET code?
         /// </summary>
         public bool IsLoggingMethodOverride { get; set; }
 
@@ -76,11 +76,14 @@ namespace CILWeaveProfiler.Models
         public string GenerateMethodILCode(LoggingTypes? classLoggingType, int maxStringLength = 0)
         {
             StringBuilder IL = new StringBuilder();
+
+            // Add all the lines of code for the Method
             foreach(string line in LinesOfCode)
             {
                 IL.AppendLine(line);
             }
 
+            // Replace the placeholders
             return ReplacePlaceholders(IL.ToString(), classLoggingType, maxStringLength);
         }
 
@@ -129,32 +132,37 @@ namespace CILWeaveProfiler.Models
                     int y = 0;
                     string cliType = "";
 
-                    /* The ldc.i4. instruction can go from ldc.i4.0 to ldc.i4.8
-                     * after that, if we need to push more items onto the stack we need
-                     * to start using the ldc.i4.s  X instruction (where X is the number)
+                    /* The ldc.i4. instruction can go from ldc.i4.0 to ldc.i4.8, after that, if we need to push more items onto the stack we need
+                     * to start using the "ldc.i4.s X" instruction (where X is the number) Not sure if we can always just use "ldc.i4.s X"?
+                     * disassembled IL uses ldc.i4.0 to ldc.i4.8 then starts using "ldc.i4.s X" so that is how we will roll...
                      */
 
+                    // Loop through each parameter....
                     for (int x = 0; x < Parameters.Count; x++)
                     {
+                        // This is so that we dont have to reference (y + 1) in various spots
                         int y2 = y + 1;
-                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y >= 9 ? "s   " + y : y.ToString()));
+
+                        sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y > 8 ? "s   " + y : y.ToString()));
                         sb.AppendLine(GenerateUniqueLabel() + "ldstr      \"" + (x == 0 ? "" : "; ") + Parameters[x].Name + "=\"");
                         sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
 
                         cliType = ToCILType(Parameters[x].Type);
+                        
+                        // If NOT an Enumerable type...
                         if (cliType != "IEnumerable")
                         {
                             sb.AppendLine(GenerateUniqueLabel() + "dup");
 
-                            sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y2 >= 9 ? "s   " + y2.ToString() : y2.ToString()));
+                            sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y2 > 8 ? "s   " + y2.ToString() : y2.ToString()));
 
                             sb.AppendLine(GenerateUniqueLabel() + "ldarga.s   " + Parameters[x].Name);
                             sb.AppendLine(GenerateUniqueLabel() + "call       instance string " + cliType + "::ToString()");
                         }
-                        else
+                        else // If its an Enumerable type, we want to call a method that will iterate through it and create a param-name/value list string
                         {
                             sb.AppendLine(GenerateUniqueLabel() + "dup");
-                            sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y2 >= 9 ? "s   " + y2.ToString() : y2.ToString()));
+                            sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y2 > 8 ? "s   " + y2.ToString() : y2.ToString()));
                             sb.AppendLine(GenerateUniqueLabel() + "ldarg." + x);
                             sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.0");
                             sb.AppendLine(GenerateUniqueLabel() + "call       string @@@Assembly@@@.@@@Class@@@::@@@EnumerableMethod@@@" + (IsStatic ? "static" : "") + "(class [System.Runtime]System.Collections.IEnumerable,");
@@ -164,6 +172,7 @@ namespace CILWeaveProfiler.Models
                         sb.AppendLine(GenerateUniqueLabel() + "stelem.ref");
                         sb.AppendLine(GenerateUniqueLabel() + "dup\n");
 
+                        // We add 2 to y because every parameter pushes 2 items onto the stack
                         y += 2;
                     }
                 }
@@ -279,7 +288,7 @@ namespace CILWeaveProfiler.Models
             // We REALLY don't want to do this if this is the logging method override, as this will cause infinite recursion in the re-assembled app :-O
             if (!IsLoggingMethodOverride)
             {
-                sb.AppendLine(GenerateUniqueLabel() + "stloc.s    V_" + (InitTypes.Count - 1));
+                sb.AppendLine(GenerateUniqueLabel() + "stloc.s    V_" + (LocalsInitTypes.Count - 1));
                 sb.AppendLine(GenerateUniqueLabel() + "ldloc.1");
                 sb.AppendLine(GenerateUniqueLabel() + "callvirt instance void [System.Runtime.Extensions]System.Diagnostics.Stopwatch::Stop()");
                 sb.AppendLine(GenerateUniqueLabel() + "nop");
@@ -309,28 +318,32 @@ namespace CILWeaveProfiler.Models
             int additionalInits = 0;
             if (!IsLoggingMethodOverride)
             {
+                // Create our item for the Parameter-Name/Value list string
                 if (loggingType == LoggingTypes.All || loggingType == LoggingTypes.ParameterValuesOnly)
                 {
                     ret += "string V_0,\n";
                     additionalInits++;
                 }
 
+                // Create our item for the Stopwatch object
                 if (loggingType == LoggingTypes.All || loggingType == LoggingTypes.ExecutionTimeOnly)
                 {
-                    ret += "class [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_1" + (InitTypes.Count > 0 ? "," : ")") + "\n";
+                    ret += "class [System.Runtime.Extensions]System.Diagnostics.Stopwatch V_1" + (LocalsInitTypes.Count > 0 ? "," : ")") + "\n";
                     additionalInits++;
                 }
 
-                for (int x = 0; x < InitTypes.Count; x++)
+                // Create the rest of the items that were already there
+                for (int x = 0; x < LocalsInitTypes.Count; x++)
                 {
-                    ret += InitTypes[x] + " V_" + (x + additionalInits) + (x < InitTypes.Count - 1 ? "," : ")") + "\n";
+                    ret += LocalsInitTypes[x] + " V_" + (x + additionalInits) + (x < LocalsInitTypes.Count - 1 ? "," : ")") + "\n";
                 }
             }
             else
             {
-                for (int x = 0; x < InitTypes.Count; x++)
+                // Just create the the items that were already there
+                for (int x = 0; x < LocalsInitTypes.Count; x++)
                 {
-                    ret += InitTypes[x] + " V_" + (x) + (x < InitTypes.Count - 1 ? "," : ")") + "\n";
+                    ret += LocalsInitTypes[x] + " V_" + (x) + (x < LocalsInitTypes.Count - 1 ? "," : ")") + "\n";
                 }
             }
 

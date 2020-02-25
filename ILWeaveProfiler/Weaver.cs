@@ -269,7 +269,7 @@ namespace CILWeaveProfiler
                     if (inInit && l.Contains("V_"))
                     {
                         string i = GetInitType(l);
-                        currentMethod.InitTypes.Add(i);
+                        currentMethod.LocalsInitTypes.Add(i);
                         includeLine = false;
                     }
 
@@ -283,7 +283,7 @@ namespace CILWeaveProfiler
                     if (l == "IL_0000:  nop")
                     {
                         // If an ".locals init" section was not found before this, lets insert a placeholder for it
-                        if (currentMethod.InitTypes.Count == 0)
+                        if (currentMethod.LocalsInitTypes.Count == 0)
                         {
                             currentMethod.LinesOfCode.Add("***" + currentMethod.MethodName + "_LOCALS INIT***");
                         }
@@ -318,7 +318,7 @@ namespace CILWeaveProfiler
                         // Grab the label value
                         label = l.Substring(l.IndexOf("IL_"), 7);
                         // Add the label value to the List of Gotos
-                        currentMethod.Gotos.Add(label);
+                        currentMethod.LabelsReferenced.Add(label);
                     }                    
                 }
 
