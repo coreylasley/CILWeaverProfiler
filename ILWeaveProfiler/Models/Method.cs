@@ -15,6 +15,7 @@ namespace CILWeaveProfiler.Models
         public List<string> Gotos { get; set; } = new List<string>();
         public List<string> InitTypes { get; set; } = new List<string>();
         public List<string> LinesOfCode { get; set; } = new List<string>();
+        public bool IsStatic { get; set; }
         public int MaxStack { get; set; }
         public bool IsLoggingMethodOverride { get; set; }
         public LoggingTypes? LoggingType { get; set; }
@@ -103,7 +104,7 @@ namespace CILWeaveProfiler.Models
                         sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));
                         sb.AppendLine(GenerateUniqueLabel() + "ldarg." + x);
                         sb.AppendLine(GenerateUniqueLabel() + "ldc.i4.0");
-                        sb.AppendLine(GenerateUniqueLabel() + "call       string @@@Assembly@@@.@@@Class@@@::@@@EnumerableMethod@@@(class [System.Runtime]System.Collections.IEnumerable,");
+                        sb.AppendLine(GenerateUniqueLabel() + "call       string @@@Assembly@@@.@@@Class@@@::@@@EnumerableMethod@@@" + (IsStatic ? "static" : "") + "(class [System.Runtime]System.Collections.IEnumerable,");
                         sb.AppendLine("                                                                                         bool)");
                         /*
                         sb.AppendLine(GenerateUniqueLabel() + "ldc.i4." + (y + 1));

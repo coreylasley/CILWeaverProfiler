@@ -159,8 +159,7 @@ namespace CILWeaveProfiler
                                
                 // Did we hit the first line of a Method definition?
                 if (inClass && l.StartsWith(".method ") && !l.Contains("specialname rtspecialname"))
-                {                   
-                    
+                {   
                     // Find the end of the method's name
                     nameEnd = l.IndexOf("(");
                     if (nameEnd > 0)
@@ -169,6 +168,8 @@ namespace CILWeaveProfiler
                         int nameStart = l.IndexOf("  ");
                         if (nameStart > 0 && nameStart < nameEnd)
                         {
+                            if (l.Contains(" static ")) currentMethod.IsStatic = true;
+
                             // Extract the method name from the line
                             currentMethod.MethodName = l.Substring(nameStart + 2, nameEnd - (nameStart + 2));
 

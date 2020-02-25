@@ -50,6 +50,45 @@ namespace ReferenceApp
             Console.WriteLine("LOGGING -> " + methodName + "(" + parameters + ") executed in: " + milliseconds);
         }
 
+        [ProfilerMethod(LoggingType = LoggingTypes.None)]
+        private static string Get___Enumerable___AsListString___(IEnumerable enumerable, bool isNumeric)
+        {
+            StringBuilder ret = new StringBuilder();
+
+            int x = 0;
+            int maxCount = 10;
+            int maxStringSize = 100;
+            string item;
+
+            ret.Append("[");
+            foreach (var i in enumerable)
+            {
+                x++;
+                if (x > 0) ret.Append(", ");
+
+                item = i.ToString();
+
+                if (!isNumeric)
+                {
+                    if (item.Length > maxStringSize && maxStringSize > 0)
+                        item = item.Substring(0, maxStringSize) + " ... ";
+
+                    item = "\"" + item.Replace("\"", "\\\"") + "\"";
+                }
+
+                ret.Append(item);
+
+                if (x == maxCount && maxCount > 0)
+                {
+                    ret.Append(", ...");
+                    break;
+                }
+            }
+            ret.Append("]");
+
+            return ret.ToString();
+        }
+
         /*
         static void SomeTestMethod(int intObject, string stringObject, List<DateTime> dateTimeObject, string[] strs)
         {
@@ -131,43 +170,7 @@ namespace ReferenceApp
         }
 
          
-        private static string Get___Enumerable___AsListString___(IEnumerable enumerable, bool isNumeric)
-       {
-           StringBuilder ret = new StringBuilder();
 
-           int x = 0;
-           int maxCount = 10;
-           int maxStringSize = 100;
-           string item;
-
-           ret.Append("[");
-           foreach (var i in enumerable)
-           {
-               x++;
-               if (x > 0) ret.Append(", ");
-
-               item = i.ToString();
-
-               if (!isNumeric)
-               {
-                   if (item.Length > maxStringSize && maxStringSize > 0)
-                       item = item.Substring(0, maxStringSize) + " ... ";
-
-                   item = "\"" + item.Replace("\"", "\\\"") + "\"";
-               }
-
-               ret.Append(item);
-
-               if (x == maxCount && maxCount > 0)
-               {
-                   ret.Append(", ...");
-                   break;
-               }
-           }
-           ret.Append("]");
-
-           return ret.ToString();
-       }
 
    */
     }

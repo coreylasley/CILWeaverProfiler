@@ -9,15 +9,37 @@ namespace CILWeaveProfiler.Models
     /// </summary>
     public class Class
     {
+        public enum EnumerableParamMethodTypes
+        {
+            Both,
+            NonStatic,
+            Static,
+            None
+        }
+
         public string ClassName { get; set; }
         public List<Method> Methods { get; set; } = new List<Method>();
         public List<string> LinesOfCode { get; set; } = new List<string>();
         public LoggingTypes? LoggingType { get; set; }
-        public bool ContainsMethodsWithEnumerableParameters
+        public EnumerableParamMethodTypes ContainsMethodsWithEnumerableParameters
         {
             get
             {
-                return Methods.Where(x => x.ContainsEnumerableParameters).FirstOrDefault() != null ? true : false;
+                EnumerableParamMethodTypes ret;
+                List<Method> methods = Methods.Where(x => x.ContainsEnumerableParameters).ToList();
+                bool staticFound = methods.Where(x => x.IsStatic).FirstOrDefault() != null ? true : false;
+                bool nonStaticFound = methods.Where(x => !x.IsStatic).FirstOrDefault() != null ? true : false;
+
+                if (staticFound && nonStaticFound)
+                    ret = EnumerableParamMethodTypes.Both;
+                else if (nonStaticFound)
+                    ret = EnumerableParamMethodTypes.NonStatic;
+                else if (staticFound)
+                    ret = EnumerableParamMethodTypes.Static;
+                else
+                    ret = EnumerableParamMethodTypes.None;
+
+                return ret;
             }
         }
         public string EnumerableToStringMethodName = "Get___Enumerable___AsListString___";
@@ -38,10 +60,24 @@ namespace CILWeaveProfiler.Models
             for (int x = 0; x < LinesOfCode.Count; x++)
             {
                 // If the next line is the end of the Class code, and we have Methods that have IEnumerable parameters...
-                if (x + 1 == LinesOfCode.Count && ContainsMethodsWithEnumerableParameters && methodOverride != null)
+                if (x + 1 == LinesOfCode.Count && ContainsMethodsWithEnumerableParameters != EnumerableParamMethodTypes.None && methodOverride != null)
                 {
-                    // Generate and append the Generic Enumberable to String Method to the IL Code
-                    IL.AppendLine(GenerateBlock_EnumerableToString(maxStringLength, maxEnumerableCount) + "\r");
+                    switch (ContainsMethodsWithEnumerableParameters)
+                    {
+                        case EnumerableParamMethodTypes.NonStatic:
+                            // Generate and append the Generic Enumberable to String Method to the IL Code
+                            IL.AppendLine(GenerateBlock_EnumerableToString(false, maxStringLength, maxEnumerableCount) + "\r");
+                            break;
+                        case EnumerableParamMethodTypes.Static:
+                            // Generate and append the Generic Enumberable to String Method to the IL Code
+                            IL.AppendLine(GenerateBlock_EnumerableToString(true, maxStringLength, maxEnumerableCount) + "\r");
+                            break;
+                        case EnumerableParamMethodTypes.Both:
+                            // Generate and append the Generic Enumberable to String Method to the IL Code
+                            IL.AppendLine(GenerateBlock_EnumerableToString(false, maxStringLength, maxEnumerableCount) + "\r");
+                            IL.AppendLine(GenerateBlock_EnumerableToString(true, maxStringLength, maxEnumerableCount) + "\r");
+                            break;
+                    }
                 }
 
                 IL.AppendLine(LinesOfCode[x]);
@@ -61,8 +97,12 @@ namespace CILWeaveProfiler.Models
             // Loop through each Method in our Class
             foreach (Method m in Methods)
             {
+                LoggingTypes? lt = LoggingType;
+                if (m.LoggingType != null) lt = m.LoggingType;
+                if (m.IsLoggingMethodOverride) lt = LoggingTypes.None;
+
                 // Replace the Method's code block with the placeholder in the Class code
-                IL = IL.Replace("%%%" + m.MethodName + "%%%", m.GenerateMethodILCode(LoggingType, maxStringLength).Replace("@@@Class@@@", ClassName));
+                IL = IL.Replace("%%%" + m.MethodName + "%%%", m.GenerateMethodILCode(lt, maxStringLength).Replace("@@@Class@@@", ClassName));
             }
 
             // Determine if we have a Method Override (used to handle the actual logging)
@@ -74,12 +114,55 @@ namespace CILWeaveProfiler.Models
             
             return IL;
         }
-        
-        private string GenerateBlock_EnumerableToString(int maxStringLength = 0, int maxEnumerableCount = 0)
+
+        //  -----------------------------------------------------------------------------
+        //  The GenerateBlock_EnumerableToString() IL Code is based on the following C#: 
+        //  -----------------------------------------------------------------------------
+        /*      
+        private static string Get___Enumerable___AsListString___(IEnumerable enumerable, bool isNumeric)
+        {
+            StringBuilder ret = new StringBuilder();
+
+            int x = 0;
+            int maxCount = 10;
+            int maxStringSize = 100;
+            string item;
+
+            ret.Append("[");
+            foreach (var i in enumerable)
+            {
+                x++;
+                if (x > 0) ret.Append(", ");
+
+                item = i.ToString();
+
+                if (!isNumeric)
+                {
+                    if (item.Length > maxStringSize && maxStringSize > 0)
+                        item = item.Substring(0, maxStringSize) + " ... ";
+
+                    item = "\"" + item.Replace("\"", "\\\"") + "\"";
+                }
+
+                ret.Append(item);
+
+                if (x == maxCount && maxCount > 0)
+                {
+                    ret.Append(", ...");
+                    break;
+                }
+            }
+            ret.Append("]");
+
+            return ret.ToString();
+        }
+         */
+
+        private string GenerateBlock_EnumerableToString(bool isStatic, int maxStringLength = 0, int maxEnumerableCount = 0)
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("  .method private hidebysig instance string");
-            sb.AppendLine("          " + EnumerableToStringMethodName + "<T>(class [System.Runtime]System.Collections.Generic.IEnumerable`1<!!T> enumerable,");
+            sb.AppendLine("  .method private hidebysig " + (isStatic ? "static" : "instance") +  " string");
+            sb.AppendLine("          " + EnumerableToStringMethodName + (isStatic ? "static" : "") + "<T>(class [System.Runtime]System.Collections.Generic.IEnumerable`1<!!T> enumerable,");
             sb.AppendLine("                                                bool isNumeric) cil managed");
             sb.AppendLine("  {");
             sb.AppendLine("    // Code size       276 (0x114)");
@@ -238,7 +321,7 @@ namespace CILWeaveProfiler.Models
             sb.AppendLine("");
             sb.AppendLine("    IL_0111:  ldloc.s    V_11");
             sb.AppendLine("    IL_0113:  ret");
-            sb.AppendLine("  } // end of method Program::" + EnumerableToStringMethodName);
+            sb.AppendLine("  } // end of method Program::" + EnumerableToStringMethodName + (isStatic ? "static" : ""));
             sb.AppendLine("");
         
             return sb.ToString();
